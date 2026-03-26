@@ -47,6 +47,14 @@ The level is designed to support repeat play and speedrunning. If the player fal
 
 ## Planned Features
 ### MVP Features
+- Loading screen:
+  - Animated 2D island-and-ocean canvas scene with progress bar.
+  - Minimum display time of 1.5 seconds so the loader is always visible even on fast or cached loads.
+  - If any asset fails to load, show an error message and a "Retry" button; do not advance to gameplay.
+  - Shown only on initial page load. In-game restarts and respawns do not re-trigger the loader.
+  - All assets (textures, models, audio) are loaded upfront during this screen — no lazy loading after gameplay begins.
+  - After loading completes and the minimum display time has elapsed, show a "Click to Start" prompt. Clicking it locks the pointer and fades into gameplay.
+  - Include an `aria-live` region that announces loading progress and state changes for screen readers.
 - Tropical island terrain and water
 - Player movement and jump controls
 - First-person / third-person camera toggle
@@ -79,6 +87,11 @@ The level is designed to support repeat play and speedrunning. If the player fal
 - [ ] Scene includes at least five unique objects and five textured objects.
 - [ ] Lighting includes ambient, diffuse, and specular behavior.
 - [ ] Gameplay supports at least two minutes of meaningful interaction.
+- [ ] Loading screen is visible for at least 2 seconds and shows accurate progress.
+- [ ] A failed asset shows an error message with a working retry button.
+- [ ] After loading, a "Click to Start" prompt appears; clicking it locks the pointer and begins gameplay.
+- [ ] Loading screen does not reappear on in-game restart or respawn.
+- [ ] Screen reader can follow load progress via `aria-live` announcements.
 
 ## Risks and Mitigation
 - **Collision bugs may block progression.** Build and test collision volumes early, and keep obstacle geometry simple.
