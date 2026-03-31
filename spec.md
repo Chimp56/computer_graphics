@@ -53,7 +53,9 @@ The level is designed to support repeat play and speedrunning. If the player fal
   - If any asset fails to load, show an error message and a "Retry" button; do not advance to gameplay.
   - Shown only on initial page load. In-game restarts and respawns do not re-trigger the loader.
   - All assets (textures, models, audio) are loaded upfront during this screen — no lazy loading after gameplay begins.
-  - After loading completes and the minimum display time has elapsed, show a "Click to Start" prompt. Clicking it locks the pointer and fades into gameplay.
+  - After loading completes and the minimum display time has elapsed, show a "Click anywhere to Start" prompt. Any click on the loader starts gameplay.
+  - On first start click, attempt fullscreen mode and pointer lock before gameplay begins.
+  - Loader art direction should be tropical: side-view island composition, animated rising sun, and multiple palm trees.
   - Include an `aria-live` region that announces loading progress and state changes for screen readers.
 - Tropical island terrain and water
 - Player movement and jump controls
@@ -90,7 +92,9 @@ The level is designed to support repeat play and speedrunning. If the player fal
 - [ ] Gameplay supports at least two minutes of meaningful interaction.
 - [ ] Loading screen is visible for at least 2 seconds and shows accurate progress.
 - [ ] A failed asset shows an error message with a working retry button.
-- [ ] After loading, a "Click to Start" prompt appears; clicking it locks the pointer and begins gameplay.
+- [ ] After loading, a "Click anywhere to Start" prompt appears; clicking anywhere begins gameplay.
+- [ ] First start click attempts fullscreen mode and pointer lock.
+- [ ] Loader visuals show a side-view tropical island, rising sun, and multiple trees.
 - [ ] Loading screen does not reappear on in-game restart or respawn.
 - [ ] Screen reader can follow load progress via `aria-live` announcements.
 
