@@ -75,7 +75,8 @@ The level is designed to support repeat play and speedrunning. If the player fal
 - `Three.js` for rendering and scene management
 - `TypeScript` for gameplay logic
 - `Vite` for local development and build tooling
-- `Vercel` for deployment
+- `Docker` for a consistent, reproducible development environment (Node.js + npm inside the container, volume-mounted source)
+- `Vercel` for deployment and CI/CD — preview deploys on every pull request with automatic build checks (`tsc --noEmit && vite build`); PRs cannot merge if the build fails
 
 ## Acceptance Criteria Checklist
 - [ ] Player can complete at least one full level from start to finish.
