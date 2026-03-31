@@ -1,18 +1,34 @@
 ﻿import * as THREE from "three";
 
+export type AssetTextureKey = "heightmap" | "sand" | "grass" | "water";
+
+type TextureEntry = {
+  key: AssetTextureKey;
+  path: string;
+};
+
+const TEXTURE_ENTRIES: TextureEntry[] = [
+  { key: "heightmap", path: "/textures/heightmap.png" },
+  { key: "sand", path: "/textures/sand.jpg" },
+  { key: "grass", path: "/textures/grass.jpg" },
+  { key: "water", path: "/textures/water.jpg" },
+];
+
 /**
  * Central asset-loading hub.
  *
- * All textures, models, and audio should load through the shared manager
- * so the loading UI can track total progress.
+ * All startup textures load through one shared LoadingManager so the loader
+ * can track real progress against the full asset set.
  */
 export class AssetManifest {
   public readonly manager: THREE.LoadingManager;
   public readonly textures: THREE.TextureLoader;
+  private readonly textureMap: Partial<Record<AssetTextureKey, THREE.Texture>>;
 
   constructor() {
     this.manager = new THREE.LoadingManager();
     this.textures = new THREE.TextureLoader(this.manager);
+    this.textureMap = {};
   }
 
   /**
@@ -51,17 +67,21 @@ export class AssetManifest {
     });
   }
 
-  /**
-   * Register every asset that must be loaded before gameplay.
-   *
-   * Phase 1: no startup assets yet.
-   */
+  getTexture(key: AssetTextureKey): THREE.Texture {
+    const texture = this.textureMap[key];
+    if (!texture) {
+      throw new Error(`Texture '${key}' was requested before load completion.`);
+    }
+    return texture;
+  }
+
   private enqueueAssets(): number {
     let queued = 0;
 
-    // Example for later phases:
-    // this.textures.load("/textures/sand.jpg");
-    // queued += 1;
+    for (const entry of TEXTURE_ENTRIES) {
+      this.textureMap[entry.key] = this.textures.load(entry.path);
+      queued += 1;
+    }
 
     return queued;
   }

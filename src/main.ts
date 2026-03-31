@@ -6,6 +6,9 @@ import { Renderer } from "./core/Renderer";
 import { createScene } from "./core/Scene";
 import { GameClock } from "./core/Clock";
 import { EventBus, type GameEvents } from "./core/EventBus";
+import { Island } from "./world/Island";
+import { Water } from "./world/Water";
+import { SkyRig } from "./world/Sky";
 
 const loader = new Loader();
 const assets = new AssetManifest();
@@ -15,6 +18,9 @@ let renderer: Renderer;
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let clock: GameClock;
+let island: Island;
+let water: Water;
+let sky: SkyRig;
 
 void bus;
 
@@ -45,13 +51,27 @@ function initGame(): void {
   scene = createScene();
   clock = new GameClock();
 
+  sky = new SkyRig();
+  sky.addToScene(scene);
+
+  island = new Island({
+    heightmap: assets.getTexture("heightmap"),
+    sand: assets.getTexture("sand"),
+    grass: assets.getTexture("grass"),
+  });
+  scene.add(island.mesh);
+
+  water = new Water(assets.getTexture("water"));
+  scene.add(water.mesh);
+
   camera = new THREE.PerspectiveCamera(
     70,
     window.innerWidth / window.innerHeight,
     0.1,
     1000,
   );
-  camera.position.set(0, 2, 5);
+  camera.position.set(0, 28, 40);
+  camera.lookAt(0, 8, 0);
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
