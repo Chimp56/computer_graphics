@@ -5,6 +5,7 @@ import { AssetManifest } from "./assets/AssetManifest";
 import { Renderer } from "./core/Renderer";
 import { createScene } from "./core/Scene";
 import { GameClock } from "./core/Clock";
+import { PlayerMesh } from "./player/PlayerMesh";
 import { EventBus, type GameEvents } from "./core/EventBus";
 import { Island } from "./world/Island";
 import {
@@ -13,7 +14,6 @@ import {
   type PlayerInputState,
 } from "./player/PlayerController";
 
-const PLAYER_EYE_HEIGHT = 1.7;
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
 
@@ -46,6 +46,10 @@ const cameraBasis: CameraBasis = {
 
 let yaw = 0;
 let pitch = -0.12;
+
+let playerMesh: PlayerMesh | null = null;
+const CAMERA_DISTANCE = 8;
+const CAMERA_HEIGHT = 3;
 
 void bus;
 
@@ -111,6 +115,11 @@ async function initGame(): Promise<void> {
     player = new PlayerController(input, cameraBasis);
     player.init();
   }
+
+  if (!playerMesh) {
+  playerMesh = new PlayerMesh();
+  await playerMesh.load(scene);
+}
 
   const spawnX = 0;
   const spawnZ = 70;
@@ -206,15 +215,22 @@ function raf(): void {
   requestAnimationFrame(raf);
 
   clock.tick((dt) => {
-    if (!player || !island) {
-      return;
-    }
+    if (!player || !island || !playerMesh) return;
 
     updateCameraBasis();
 
     const groundHeight = island.getHeightAt(player.position.x, player.position.z);
     player.update(dt, Number.isFinite(groundHeight) ? groundHeight : undefined);
 
+    if (input.jump) {
+      playerMesh.playAnimation("jump");
+    } else if (input.forward || input.backward || input.left || input.right) {
+      playerMesh.playAnimation("walk");
+    } else {
+      playerMesh.playAnimation("idle");
+    }
+
+    playerMesh.update(dt);
     updateCameraTransform();
   });
 
@@ -231,14 +247,17 @@ function updateCameraBasis(): void {
 }
 
 function updateCameraTransform(): void {
-  if (!player) {
-    return;
-  }
+  if (!player || !playerMesh) return;
 
+  playerMesh.group.position.copy(player.position);
+  playerMesh.group.rotation.y = yaw + Math.PI;
+
+const offset = new THREE.Vector3(
+  Math.sin(yaw) * CAMERA_DISTANCE,
+  CAMERA_HEIGHT,
+  Math.cos(yaw) * CAMERA_DISTANCE,
+);
+
+  camera.position.copy(player.position).add(offset);
   camera.rotation.set(pitch, yaw, 0);
-  camera.position.set(
-    player.position.x,
-    player.position.y + PLAYER_EYE_HEIGHT,
-    player.position.z,
-  );
 }
