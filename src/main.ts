@@ -7,9 +7,18 @@ import { createScene } from "./core/Scene";
 import { GameClock } from "./core/Clock";
 import { EventBus, type GameEvents } from "./core/EventBus";
 import { Island } from "./world/Island";
+import {
+  PlayerController,
+  type CameraBasis,
+  type PlayerInputState,
+} from "./player/PlayerController";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
+
+const PLAYER_EYE_HEIGHT = 1.7;
+const LOOK_SENSITIVITY = 0.002;
+const MAX_PITCH = Math.PI * 0.49;
 
 const loader = new Loader();
 const assets = new AssetManifest();
@@ -20,11 +29,29 @@ let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let clock: GameClock;
 let island: Island | null = null;
+let player: PlayerController | null = null;
 let gsm: GameStateManager | null = null;
 let triggers: TriggerVolumes | null = null;
 let bell: FinishBell | null = null;
 
 let coreInitialized = false;
+
+const input: PlayerInputState = {
+  forward: false,
+  backward: false,
+  left: false,
+  right: false,
+  jump: false,
+  descend: false,
+};
+
+const cameraBasis: CameraBasis = {
+  forward: new THREE.Vector3(0, 0, -1),
+  right: new THREE.Vector3(1, 0, 0),
+};
+
+let yaw = 0;
+let pitch = -0.12;
 
 // Expose bus and gsm on window for in-browser testing.
 (window as unknown as Record<string, unknown>).bus = bus;
@@ -64,10 +91,13 @@ async function initGame(): Promise<void> {
       0.1,
       1000,
     );
+    camera.rotation.order = "YXZ";
 
     const sun = new THREE.DirectionalLight(0xffffff, 0.9);
     sun.position.set(80, 120, 40);
     scene.add(sun);
+
+    bindInput();
 
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -84,21 +114,6 @@ async function initGame(): Promise<void> {
     });
     scene.add(island.mesh);
 
-    const spawnX = 0;
-    const spawnZ = 70;
-    const spawnHeight = island.getHeightAt(spawnX, spawnZ);
-    const centerHeight = island.getHeightAt(0, 0);
-
-    const spawnPos = new THREE.Vector3(
-      spawnX,
-      Number.isFinite(spawnHeight) ? spawnHeight + 1.5 : 8,
-      spawnZ,
-    );
-
-    camera.position.copy(spawnPos).y += 1.5;
-    camera.lookAt(0, Number.isFinite(centerHeight) ? centerHeight + 4 : 4, 0);
-
-    // Finish bell placed near the centre of the island.
     const bellX = 0;
     const bellZ = -40;
     const bellHeight = island.getHeightAt(bellX, bellZ);
@@ -110,29 +125,99 @@ async function initGame(): Promise<void> {
     bell = new FinishBell(bellPos);
     scene.add(bell.group);
 
-    // Game state manager — checkpoint at spawn.
+    const spawnX = 0;
+    const spawnZ = 70;
+    const spawnHeight = island.getHeightAt(spawnX, spawnZ);
+    const spawnY = Number.isFinite(spawnHeight) ? spawnHeight : 5;
+    const spawnPos = new THREE.Vector3(spawnX, spawnY, spawnZ);
+
     gsm = new GameStateManager(spawnPos, bus);
     gsm.onRespawn = (pos) => {
-      camera.position.set(pos.x, pos.y + 1.5, pos.z);
-      camera.lookAt(0, Number.isFinite(centerHeight) ? centerHeight + 4 : 4, 0);
+      player?.position.set(pos.x, pos.y, pos.z);
       triggers?.reset();
     };
     gsm.onWin = (formattedTime) => {
       bell?.ring();
-      // HUD win panel will be wired in Phase 8; log for now.
       console.log(`Run complete! Time: ${formattedTime}`);
     };
 
-    // Trigger volumes — start zone near spawn, finish zone at bell.
-    const startCenter = spawnPos.clone().setY(spawnPos.y + 1);
+    const startCenter = spawnPos.clone().setY(spawnY + 1);
     triggers = new TriggerVolumes(startCenter, bellPos.clone().setY(bellPos.y + 1), bus);
   }
+
+  if (!player) {
+    player = new PlayerController(input, cameraBasis);
+    player.init();
+  }
+
+  const spawnX = 0;
+  const spawnZ = 70;
+  const spawnHeight = island.getHeightAt(spawnX, spawnZ);
+  const spawnY = Number.isFinite(spawnHeight) ? spawnHeight : 5;
+
+  player.position.set(spawnX, spawnY, spawnZ);
+
+  yaw = 0;
+  pitch = -0.12;
+  updateCameraTransform();
+}
+
+function bindInput(): void {
+  window.addEventListener("keydown", (event) => {
+    if (event.code === "KeyW") input.forward = true;
+    if (event.code === "KeyS") input.backward = true;
+    if (event.code === "KeyA") input.left = true;
+    if (event.code === "KeyD") input.right = true;
+    if (event.code === "Space") {
+      input.jump = true;
+      event.preventDefault();
+    }
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") input.descend = true;
+  });
+
+  window.addEventListener("keyup", (event) => {
+    if (event.code === "KeyW") input.forward = false;
+    if (event.code === "KeyS") input.backward = false;
+    if (event.code === "KeyA") input.left = false;
+    if (event.code === "KeyD") input.right = false;
+    if (event.code === "Space") input.jump = false;
+    if (event.code === "ShiftLeft" || event.code === "ShiftRight") input.descend = false;
+  });
+
+  renderer.domElement.addEventListener("click", () => {
+    if (document.pointerLockElement !== renderer.domElement) {
+      renderer.domElement.requestPointerLock?.();
+    }
+  });
+
+  window.addEventListener("mousemove", (event) => {
+    const pointerLocked = document.pointerLockElement === renderer.domElement;
+
+    if (pointerLocked) {
+      yaw -= event.movementX * LOOK_SENSITIVITY;
+      pitch -= event.movementY * LOOK_SENSITIVITY;
+      pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+      return;
+    }
+
+    const nx = event.clientX / window.innerWidth;
+    const ny = event.clientY / window.innerHeight;
+
+    yaw = (0.5 - nx) * Math.PI * 2;
+    pitch = (0.5 - ny) * MAX_PITCH * 2;
+    pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+  });
 }
 
 function startImmersiveMode(canvas: HTMLCanvasElement): void {
-  canvas.requestPointerLock?.();
+  const requestPointerLock = (): void => {
+    if (document.pointerLockElement !== canvas) {
+      canvas.requestPointerLock?.();
+    }
+  };
 
   if (document.fullscreenElement) {
+    requestPointerLock();
     return;
   }
 
@@ -142,30 +227,63 @@ function startImmersiveMode(canvas: HTMLCanvasElement): void {
 
   const request = root.requestFullscreen?.();
   if (request) {
-    void request.catch(() => {
-      // Ignore fullscreen rejection; gameplay still starts in viewport mode.
-    });
+    void request
+      .catch(() => {
+        // Ignore fullscreen rejection; gameplay still starts in viewport mode.
+      })
+      .finally(() => {
+        requestPointerLock();
+      });
+    return;
   }
+
+  requestPointerLock();
 }
 
 function raf(): void {
   requestAnimationFrame(raf);
 
   clock.tick((dt) => {
-    // Per-frame update order (CLAUDE.md):
-    // 1. Input          — Phase 3
-    // 2. Player physics — Phase 3
-    // 3. Collision      — Phase 4
+    if (!player || !island) return;
+
+    // 1. Input (bound via events above)
+    // 2. Player physics
+    updateCameraBasis();
+    const groundHeight = island.getHeightAt(player.position.x, player.position.z);
+    player.update(dt, Number.isFinite(groundHeight) ? groundHeight : undefined);
+    updateCameraTransform();
+
+    // 3. Collision — Phase 4
     // 4. Triggers & interactions
     if (gsm && triggers) {
-      triggers.update(camera.position, gsm.getState());
+      triggers.update(player.position, gsm.getState());
     }
     // 5. Game state & timer
     gsm?.update(dt);
-    // 6. Obstacles      — Phase 6
+    // 6. Obstacles — Phase 6
     // 7. Bell animation
     bell?.update(dt);
   });
 
   renderer.render(scene, camera);
+}
+
+function updateCameraBasis(): void {
+  camera.rotation.set(pitch, yaw, 0);
+  camera.getWorldDirection(cameraBasis.forward);
+  cameraBasis.forward.normalize();
+  cameraBasis.right
+    .crossVectors(cameraBasis.forward, THREE.Object3D.DEFAULT_UP)
+    .normalize();
+}
+
+function updateCameraTransform(): void {
+  if (!player) return;
+
+  camera.rotation.set(pitch, yaw, 0);
+  camera.position.set(
+    player.position.x,
+    player.position.y + PLAYER_EYE_HEIGHT,
+    player.position.z,
+  );
 }
