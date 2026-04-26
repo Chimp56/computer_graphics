@@ -42,10 +42,17 @@ The `dist/` directory contains the static production build ready for any hosting
 
 ## Controls
 
+- **Mouse** — Look
 - **WASD** — Move
 - **Space** — Jump
 - **E** — Interact
 - **V** — Toggle first-person / third-person camera
+
+### Dev Controls (`npm run dev` only)
+
+- **F** — Toggle fly mode
+- **Space** — Ascend while flying
+- **Shift** — Descend while flying
 
 ## Tech Stack
 
