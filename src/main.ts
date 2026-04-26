@@ -12,6 +12,9 @@ import {
   type CameraBasis,
   type PlayerInputState,
 } from "./player/PlayerController";
+import { GameStateManager } from "./game/GameStateManager";
+import { TriggerVolumes } from "./world/TriggerVolumes";
+import { FinishBell } from "./world/FinishBell";
 
 const PLAYER_EYE_HEIGHT = 1.7;
 const LOOK_SENSITIVITY = 0.002;
@@ -27,6 +30,9 @@ let camera: THREE.PerspectiveCamera;
 let clock: GameClock;
 let island: Island | null = null;
 let player: PlayerController | null = null;
+let gsm: GameStateManager | null = null;
+let triggers: TriggerVolumes | null = null;
+let bell: FinishBell | null = null;
 
 let coreInitialized = false;
 
@@ -47,7 +53,9 @@ const cameraBasis: CameraBasis = {
 let yaw = 0;
 let pitch = -0.12;
 
-void bus;
+// Expose bus and gsm on window for in-browser testing.
+(window as unknown as Record<string, unknown>).bus = bus;
+(window as unknown as Record<string, unknown>).getGsm = () => gsm;
 
 void startLoading();
 
@@ -105,6 +113,36 @@ async function initGame(): Promise<void> {
       sandTextureUrl: "/textures/sand.png",
     });
     scene.add(island.mesh);
+
+    const bellX = 0;
+    const bellZ = -40;
+    const bellHeight = island.getHeightAt(bellX, bellZ);
+    const bellPos = new THREE.Vector3(
+      bellX,
+      Number.isFinite(bellHeight) ? bellHeight : 4,
+      bellZ,
+    );
+    bell = new FinishBell(bellPos);
+    scene.add(bell.group);
+
+    const spawnX = 0;
+    const spawnZ = 70;
+    const spawnHeight = island.getHeightAt(spawnX, spawnZ);
+    const spawnY = Number.isFinite(spawnHeight) ? spawnHeight : 5;
+    const spawnPos = new THREE.Vector3(spawnX, spawnY, spawnZ);
+
+    gsm = new GameStateManager(spawnPos, bus);
+    gsm.onRespawn = (pos) => {
+      player?.position.set(pos.x, pos.y, pos.z);
+      triggers?.reset();
+    };
+    gsm.onWin = (formattedTime) => {
+      bell?.ring();
+      console.log(`Run complete! Time: ${formattedTime}`);
+    };
+
+    const startCenter = spawnPos.clone().setY(spawnY + 1);
+    triggers = new TriggerVolumes(startCenter, bellPos.clone().setY(bellPos.y + 1), bus);
   }
 
   if (!player) {
@@ -206,16 +244,25 @@ function raf(): void {
   requestAnimationFrame(raf);
 
   clock.tick((dt) => {
-    if (!player || !island) {
-      return;
-    }
+    if (!player || !island) return;
 
+    // 1. Input (bound via events above)
+    // 2. Player physics
     updateCameraBasis();
-
     const groundHeight = island.getHeightAt(player.position.x, player.position.z);
     player.update(dt, Number.isFinite(groundHeight) ? groundHeight : undefined);
-
     updateCameraTransform();
+
+    // 3. Collision — Phase 4
+    // 4. Triggers & interactions
+    if (gsm && triggers) {
+      triggers.update(player.position, gsm.getState());
+    }
+    // 5. Game state & timer
+    gsm?.update(dt);
+    // 6. Obstacles — Phase 6
+    // 7. Bell animation
+    bell?.update(dt);
   });
 
   renderer.render(scene, camera);
@@ -231,9 +278,7 @@ function updateCameraBasis(): void {
 }
 
 function updateCameraTransform(): void {
-  if (!player) {
-    return;
-  }
+  if (!player) return;
 
   camera.rotation.set(pitch, yaw, 0);
   camera.position.set(
