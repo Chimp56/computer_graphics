@@ -53,15 +53,15 @@ export class AssetManifest {
 
   /**
    * Register every asset that must be loaded before gameplay.
-   *
-   * Phase 1: no startup assets yet.
    */
   private enqueueAssets(): number {
     let queued = 0;
 
-    // Example for later phases:
-    // this.textures.load("/textures/sand.jpg");
-    // queued += 1;
+    this.textures.load("/textures/heightmap.png");
+    queued += 1;
+
+    this.textures.load("/textures/sand.png");
+    queued += 1;
 
     return queued;
   }
