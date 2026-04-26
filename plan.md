@@ -84,10 +84,10 @@ Build Plan: Island Obstacle Speedrun
      src/world/Island.ts            PlaneGeometry + heightmap displacement + getHeightAt(x,z), MeshPhongMaterial with sand texture
      src/world/Water.ts             Flat plane at y=0.5, translucent blue MeshPhongMaterial, shininess=100 for specular glints
      src/world/Sky.ts               HemisphereLight(sky,ground,0.6) + DirectionalLight(0.8) positioned as sun
-     public/textures/heightmap.png  128x128 grayscale island shape
-     public/textures/sand.jpg       Tiled sand texture for terrain
-     public/textures/grass.jpg      Grass for higher elevations (optional blend)
-     public/textures/water.jpg      Water surface texture
+     public/textures/heightmap.png  512x512 grayscale island shape
+     public/textures/sand.png       Tiled sand texture for terrain
+     public/textures/grass.png      Grass for higher elevations (optional blend)
+     public/textures/water.png      Water surface texture
 
      Key: Island.getHeightAt(x, z) does bilinear interpolation of the heightfield — this is the collision ground for Phase 4. Register all textures in   
      AssetManifest so they load through the manager.
