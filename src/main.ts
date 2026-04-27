@@ -5,6 +5,7 @@ import { AssetManifest } from "./assets/AssetManifest";
 import { Renderer } from "./core/Renderer";
 import { createScene } from "./core/Scene";
 import { GameClock } from "./core/Clock";
+import { PlayerMesh } from "./player/PlayerMesh";
 import { EventBus, type GameEvents } from "./core/EventBus";
 import { Island } from "./world/Island";
 import {
@@ -14,8 +15,10 @@ import {
 } from "./player/PlayerController";
 import { WipeoutObstacle } from "./obstacles/WipeoutObstacle";
 import { Water, WATER_LEVEL } from "./world/Water";
+import { GameStateManager } from "./game/GameStateManager";
+import { TriggerVolumes } from "./world/TriggerVolumes";
+import { FinishBell } from "./world/FinishBell";
 
-const PLAYER_EYE_HEIGHT = 1.7;
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
 
@@ -32,6 +35,9 @@ let player: PlayerController | null = null;
 const wipeouts: WipeoutObstacle[] = [];
 let water: Water | null = null;
 let respawnCooldown = 0;
+let gsm: GameStateManager | null = null;
+let triggers: TriggerVolumes | null = null;
+let bell: FinishBell | null = null;
 
 let coreInitialized = false;
 
@@ -52,7 +58,14 @@ const cameraBasis: CameraBasis = {
 let yaw = 0;
 let pitch = -0.12;
 
+let playerMesh: PlayerMesh | null = null;
+const CAMERA_DISTANCE = 8;
+const CAMERA_HEIGHT = 3;
+
 void bus;
+// Expose bus and gsm on window for in-browser testing.
+(window as unknown as Record<string, unknown>).bus = bus;
+(window as unknown as Record<string, unknown>).getGsm = () => gsm;
 
 void startLoading();
 
@@ -110,12 +123,47 @@ async function initGame(): Promise<void> {
       sandTextureUrl: "/textures/sand.png",
     });
     scene.add(island.mesh);
+
+    const bellX = 0;
+    const bellZ = -40;
+    const bellHeight = island.getHeightAt(bellX, bellZ);
+    const bellPos = new THREE.Vector3(
+      bellX,
+      Number.isFinite(bellHeight) ? bellHeight : 4,
+      bellZ,
+    );
+    bell = new FinishBell(bellPos);
+    scene.add(bell.group);
+
+    const spawnX = 0;
+    const spawnZ = 70;
+    const spawnHeight = island.getHeightAt(spawnX, spawnZ);
+    const spawnY = Number.isFinite(spawnHeight) ? spawnHeight : 5;
+    const spawnPos = new THREE.Vector3(spawnX, spawnY, spawnZ);
+
+    gsm = new GameStateManager(spawnPos, bus);
+    gsm.onRespawn = (pos) => {
+      player?.position.set(pos.x, pos.y, pos.z);
+      triggers?.reset();
+    };
+    gsm.onWin = (formattedTime) => {
+      bell?.ring();
+      console.log(`Run complete! Time: ${formattedTime}`);
+    };
+
+    const startCenter = spawnPos.clone().setY(spawnY + 1);
+    triggers = new TriggerVolumes(startCenter, bellPos.clone().setY(bellPos.y + 1), bus);
   }
 
   if (!player) {
     player = new PlayerController(input, cameraBasis);
     player.init();
   }
+
+  if (!playerMesh) {
+  playerMesh = new PlayerMesh();
+  await playerMesh.load(scene);
+}
 
   const spawnX = 0;
   const spawnZ = 70;
@@ -231,12 +279,11 @@ function raf(): void {
   requestAnimationFrame(raf);
 
   clock.tick((dt) => {
-    if (!player || !island) {
-      return;
-    }
+    if (!player || !island || !playerMesh) return;
 
+    // 1. Input (bound via events above)
+    // 2. Player physics
     updateCameraBasis();
-
     const groundHeight = island.getHeightAt(player.position.x, player.position.z);
     player.update(dt, Number.isFinite(groundHeight) ? groundHeight : undefined);
 
@@ -264,8 +311,28 @@ function raf(): void {
         respawnCooldown = 1.5;
       }
     }
+    if (input.jump) {
+      playerMesh.playAnimation("jump");
+    } else if (input.forward || input.backward || input.left || input.right) {
+      playerMesh.playAnimation("walk");
+    } else {
+      playerMesh.playAnimation("idle");
+    }
+
+    playerMesh.update(dt);
 
     updateCameraTransform();
+
+    // 3. Collision — Phase 4
+    // 4. Triggers & interactions
+    if (gsm && triggers) {
+      triggers.update(player.position, gsm.getState());
+    }
+    // 5. Game state & timer
+    gsm?.update(dt);
+    // 6. Obstacles — Phase 6
+    // 7. Bell animation
+    bell?.update(dt);
   });
 
   renderer.render(scene, camera);
@@ -281,14 +348,17 @@ function updateCameraBasis(): void {
 }
 
 function updateCameraTransform(): void {
-  if (!player) {
-    return;
-  }
+  if (!player || !playerMesh) return;
 
+  playerMesh.group.position.copy(player.position);
+  playerMesh.group.rotation.y = yaw + Math.PI;
+
+const offset = new THREE.Vector3(
+  Math.sin(yaw) * CAMERA_DISTANCE,
+  CAMERA_HEIGHT,
+  Math.cos(yaw) * CAMERA_DISTANCE,
+);
+
+  camera.position.copy(player.position).add(offset);
   camera.rotation.set(pitch, yaw, 0);
-  camera.position.set(
-    player.position.x,
-    player.position.y + PLAYER_EYE_HEIGHT,
-    player.position.z,
-  );
 }
