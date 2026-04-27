@@ -13,6 +13,8 @@ import {
   type CameraBasis,
   type PlayerInputState,
 } from "./player/PlayerController";
+import { WipeoutObstacle } from "./obstacles/WipeoutObstacle";
+import { Water, WATER_LEVEL } from "./world/Water";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
@@ -30,6 +32,9 @@ let camera: THREE.PerspectiveCamera;
 let clock: GameClock;
 let island: Island | null = null;
 let player: PlayerController | null = null;
+const wipeouts: WipeoutObstacle[] = [];
+let water: Water | null = null;
+let respawnCooldown = 0;
 let gsm: GameStateManager | null = null;
 let triggers: TriggerVolumes | null = null;
 let bell: FinishBell | null = null;
@@ -167,6 +172,26 @@ async function initGame(): Promise<void> {
 
   player.position.set(spawnX, spawnY, spawnZ);
 
+  if (!water) {
+    water = new Water();
+    scene.add(water.mesh);
+  }
+
+  if (wipeouts.length === 0) {
+    const placements: [number, number][] = [
+      [0, 50],
+      [0, 30],
+      [0, 10],
+    ];
+    for (const [wx, wz] of placements) {
+      const obs = new WipeoutObstacle();
+      const gy = island.getHeightAt(wx, wz);
+      obs.place(wx, wz, Number.isFinite(gy) ? gy : 0);
+      scene.add(obs.mesh);
+      wipeouts.push(obs);
+    }
+  }
+
   yaw = 0;
   pitch = -0.12;
   updateCameraTransform();
@@ -262,6 +287,30 @@ function raf(): void {
     const groundHeight = island.getHeightAt(player.position.x, player.position.z);
     player.update(dt, Number.isFinite(groundHeight) ? groundHeight : undefined);
 
+    for (const obs of wipeouts) {
+      obs.update(dt);
+
+      // Solid — pole + arms + balls all block the player horizontally
+      const solid = obs.checkSolid(player.position);
+      if (solid) player.position.add(solid);
+
+      // Arm hit → respawn immediately (same cooldown as water respawn)
+      if (obs.checkKnockback(player.position) && respawnCooldown === 0 && water) {
+        const spawn = water.randomSpawn((x, z) => island!.getHeightAt(x, z));
+        player.teleport(spawn);
+        respawnCooldown = 1.5;
+      }
+    }
+
+    if (water) {
+      water.update(dt);
+      respawnCooldown = Math.max(0, respawnCooldown - dt);
+      if (player.position.y < WATER_LEVEL && respawnCooldown === 0) {
+        const spawn = water.randomSpawn((x, z) => island!.getHeightAt(x, z));
+        player.teleport(spawn);
+        respawnCooldown = 1.5;
+      }
+    }
     if (input.jump) {
       playerMesh.playAnimation("jump");
     } else if (input.forward || input.backward || input.left || input.right) {

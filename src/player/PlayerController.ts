@@ -126,6 +126,17 @@ export class PlayerController {
     }
   }
 
+  applyImpulse(impulse: THREE.Vector3): void {
+    this.velocity.add(impulse);
+    this.grounded = false;
+  }
+
+  teleport(pos: THREE.Vector3): void {
+    this.position.copy(pos);
+    this.velocity.set(0, 0, 0);
+    this.grounded = false;
+  }
+
   get isFlyMode(): boolean {
     return this.flyMode;
   }
