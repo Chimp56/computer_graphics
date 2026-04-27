@@ -2,10 +2,12 @@ import * as THREE from "three";
 
 const ARM_LENGTH = 4.5;
 const ARM_HEIGHT = 2.2;
-const NUM_ARMS = 2;
+const NUM_ARMS = 3;
 const ROTATE_SPEED = 1.5; // rad/s
-const COLLISION_RADIUS = 0.7;
+const ARM_SPHERE_RADIUS = 0.55;
+const TIP_SPHERE_RADIUS = 0.35;
 const SPHERES_PER_ARM = 5;
+const POLE_RADIUS = 0.5;
 const PLAYER_RADIUS = 0.4;
 
 function createStripedTexture(): THREE.CanvasTexture {
@@ -32,7 +34,7 @@ export class WipeoutObstacle {
   constructor() {
     const tex = createStripedTexture();
     const poleMat = new THREE.MeshPhongMaterial({ color: 0x999999, shininess: 80, specular: 0x444444 });
-    const armMat = new THREE.MeshPhongMaterial({ map: tex, shininess: 100, specular: 0x333333 });
+    const armMat  = new THREE.MeshPhongMaterial({ map: tex, shininess: 100, specular: 0x333333 });
     const ballMat = new THREE.MeshPhongMaterial({ color: 0xdd2222, shininess: 120, specular: 0x553333 });
     const baseMat = new THREE.MeshPhongMaterial({ color: 0x555566, shininess: 40 });
 
@@ -47,22 +49,20 @@ export class WipeoutObstacle {
     pole.position.y = (ARM_HEIGHT + 1.0) / 2;
     this.mesh.add(pole);
 
-    // Two opposite arms
+    // Three arms evenly spaced at 120°
     for (let i = 0; i < NUM_ARMS; i++) {
-      const angle = (i / NUM_ARMS) * Math.PI; // 0 and π
+      const angle = (i / NUM_ARMS) * Math.PI * 2;
 
       const pivot = new THREE.Group();
       pivot.rotation.y = angle;
       pivot.position.y = ARM_HEIGHT;
       this.armGroup.add(pivot);
 
-      // Arm cylinder: rotated to lie along +X, starting at pivot center
       const armGeo = new THREE.CylinderGeometry(0.18, 0.18, ARM_LENGTH, 10);
       armGeo.rotateZ(Math.PI / 2);
       armGeo.translate(ARM_LENGTH / 2, 0, 0);
       pivot.add(new THREE.Mesh(armGeo, armMat));
 
-      // Ball at tip
       const ball = new THREE.Mesh(new THREE.SphereGeometry(0.5, 14, 10), ballMat);
       ball.position.x = ARM_LENGTH;
       pivot.add(ball);
@@ -70,9 +70,12 @@ export class WipeoutObstacle {
 
     this.mesh.add(this.armGroup);
 
-    // Pre-allocate collision spheres (updated each frame)
-    for (let i = 0; i < NUM_ARMS * SPHERES_PER_ARM; i++) {
-      this.collisionSpheres.push(new THREE.Sphere(new THREE.Vector3(), COLLISION_RADIUS));
+    // Tip sphere (last per arm) gets tighter radius to match visual ball size
+    for (let i = 0; i < NUM_ARMS; i++) {
+      for (let j = 0; j < SPHERES_PER_ARM; j++) {
+        const r = j === SPHERES_PER_ARM - 1 ? TIP_SPHERE_RADIUS : ARM_SPHERE_RADIUS;
+        this.collisionSpheres.push(new THREE.Sphere(new THREE.Vector3(), r));
+      }
     }
   }
 
@@ -87,40 +90,67 @@ export class WipeoutObstacle {
     const cz = this.mesh.position.z;
 
     for (let i = 0; i < NUM_ARMS; i++) {
-      const worldAngle = (i / NUM_ARMS) * Math.PI + this.armGroup.rotation.y;
+      const worldAngle = (i / NUM_ARMS) * Math.PI * 2 + this.armGroup.rotation.y;
       const cos = Math.cos(worldAngle);
       const sin = Math.sin(worldAngle);
 
       for (let j = 0; j < SPHERES_PER_ARM; j++) {
         const dist = ((j + 1) / SPHERES_PER_ARM) * ARM_LENGTH;
-        const sphere = this.collisionSpheres[i * SPHERES_PER_ARM + j];
-        sphere.center.set(cx + cos * dist, cy, cz + sin * dist);
+        this.collisionSpheres[i * SPHERES_PER_ARM + j].center.set(
+          cx + cos * dist, cy, cz + sin * dist,
+        );
       }
     }
   }
 
   /**
-   * Returns a normalised push direction if the player sphere overlaps any arm
-   * sphere, otherwise null. The caller should multiply by a knock speed and
-   * pass the result to PlayerController.applyImpulse().
+   * Unified solid check — pole + every arm sphere + balls.
+   * Uses 2D horizontal (XZ) distance so the player is treated as a vertical
+   * capsule; height of the arm doesn't cause missed collisions.
+   * Returns the displacement to add directly to player.position, or null.
    */
-  checkCollision(playerPos: THREE.Vector3): THREE.Vector3 | null {
+  checkSolid(playerPos: THREE.Vector3): THREE.Vector3 | null {
+    // Pole (static cylinder)
+    const pdx = playerPos.x - this.mesh.position.x;
+    const pdz = playerPos.z - this.mesh.position.z;
+    const poleDist = Math.sqrt(pdx * pdx + pdz * pdz);
+    const poleMin  = POLE_RADIUS + PLAYER_RADIUS;
+    if (poleDist < poleMin) {
+      if (poleDist < 0.001) return new THREE.Vector3(poleMin, 0, 0);
+      const ov = poleMin - poleDist;
+      return new THREE.Vector3((pdx / poleDist) * ov, 0, (pdz / poleDist) * ov);
+    }
+
+    // Arms + balls (rotating spheres, XZ distance only)
     for (const sphere of this.collisionSpheres) {
       const dx = playerPos.x - sphere.center.x;
-      const dy = playerPos.y - sphere.center.y;
       const dz = playerPos.z - sphere.center.z;
-      const distSq = dx * dx + dy * dy + dz * dz;
-      const minDist = sphere.radius + PLAYER_RADIUS;
+      const d2  = Math.sqrt(dx * dx + dz * dz);
+      const min = sphere.radius + PLAYER_RADIUS;
+      if (d2 < min) {
+        if (d2 < 0.001) return new THREE.Vector3(min, 0, 0);
+        const ov = min - d2;
+        return new THREE.Vector3((dx / d2) * ov, 0, (dz / d2) * ov);
+      }
+    }
+    return null;
+  }
 
-      if (distSq < minDist * minDist) {
-        const dist = Math.sqrt(distSq);
-        const push = new THREE.Vector3(dx, dy, dz);
-        if (dist < 0.001) push.set(0, 1, 0);
-        else push.divideScalar(dist);
-        // Small upward kick so the arc looks natural — horizontal force carries them off the edge
-        push.y = Math.max(push.y, 0.15);
-        push.normalize();
-        return push;
+  /**
+   * Knockback direction — call this BEFORE checkSolid so the overlap still
+   * exists. Returns a horizontal unit vector to multiply by knock speed, or null.
+   */
+  checkKnockback(playerPos: THREE.Vector3): THREE.Vector3 | null {
+    for (const sphere of this.collisionSpheres) {
+      const dx = playerPos.x - sphere.center.x;
+      const dz = playerPos.z - sphere.center.z;
+      const d2  = Math.sqrt(dx * dx + dz * dz);
+      const min = sphere.radius + PLAYER_RADIUS;
+      if (d2 < min) {
+        const push = new THREE.Vector3(dx, 0, dz);
+        if (d2 < 0.001) push.set(1, 0, 0);
+        else push.divideScalar(d2);
+        return push; // already normalised in XZ
       }
     }
     return null;
