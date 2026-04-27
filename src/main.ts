@@ -131,9 +131,9 @@ async function initGame(): Promise<void> {
 
   if (wipeouts.length === 0) {
     const placements: [number, number][] = [
-      [0, 45],
-      [-6, 20],
-      [7, 0],
+      [0, 50],
+      [0, 30],
+      [0, 10],
     ];
     for (const [wx, wz] of placements) {
       const obs = new WipeoutObstacle();
@@ -242,9 +242,16 @@ function raf(): void {
 
     for (const obs of wipeouts) {
       obs.update(dt);
-      const hit = obs.checkCollision(player.position);
-      if (hit) {
-        player.applyImpulse(hit.multiplyScalar(22));
+
+      // Solid — pole + arms + balls all block the player horizontally
+      const solid = obs.checkSolid(player.position);
+      if (solid) player.position.add(solid);
+
+      // Arm hit → respawn immediately (same cooldown as water respawn)
+      if (obs.checkKnockback(player.position) && respawnCooldown === 0 && water) {
+        const spawn = water.randomSpawn((x, z) => island!.getHeightAt(x, z));
+        player.teleport(spawn);
+        respawnCooldown = 1.5;
       }
     }
 
