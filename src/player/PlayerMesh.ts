@@ -62,9 +62,10 @@ load(scene: THREE.Scene): Promise<void> {
     const next = this.animations[name];
     if (!next) return;
     if (name === "jump") {
+      if (prev) prev.fadeOut(0);
       next.reset();
       next.time = 0.3;
-      next.play();
+      next.fadeIn(0).play();
       this.currentAction = name;
       return;
     }
@@ -73,7 +74,8 @@ load(scene: THREE.Scene): Promise<void> {
     this.currentAction = name;
   }
 
-  update(dt: number): void {
-    this.mixer?.update(dt);
-  }
+update(dt: number): void {
+  this.mixer?.update(dt);
+}
+
 }

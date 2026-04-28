@@ -313,10 +313,12 @@ function raf(): void {
         respawnCooldown = 1.5;
       }
     }
+    const isMoving = input.forward || input.backward || input.left || input.right;
+
     if (isJumping || !player.isGrounded) {
       playerMesh.playAnimation("jump", true);
       if (player.isGrounded) isJumping = false;
-    } else if (input.forward || input.backward || input.left || input.right) {
+    } else if (isMoving) {
       playerMesh.playAnimation("walk");
     } else {
       playerMesh.playAnimation("idle");
