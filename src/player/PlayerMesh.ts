@@ -35,6 +35,7 @@ load(scene: THREE.Scene): Promise<void> {
                 const action = this.mixer.clipAction(animFbx.animations[0]);
                 this.animations[name] = action;
                 if (name === "idle") action.play();
+                if (name === "jump") action.time = 0.3;
               }
               checkDone();
             },
@@ -55,13 +56,20 @@ load(scene: THREE.Scene): Promise<void> {
   });
 }
 
-  playAnimation(name: string): void {
+  playAnimation(name: string, instant = false): void {
     if (this.currentAction === name) return;
     const prev = this.animations[this.currentAction];
     const next = this.animations[name];
     if (!next) return;
-    if (prev) prev.fadeOut(0.2);
-    next.reset().fadeIn(0.2).play();
+    if (name === "jump") {
+      next.reset();
+      next.time = 0.3;
+      next.play();
+      this.currentAction = name;
+      return;
+    }
+    if (prev) prev.fadeOut(instant ? 0 : 0.2);
+    next.reset().fadeIn(instant ? 0 : 0.2).play();
     this.currentAction = name;
   }
 
