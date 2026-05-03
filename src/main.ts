@@ -18,6 +18,7 @@ import { Water, WATER_LEVEL } from "./world/Water";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
+import { MushroomEnemy } from "./enemies/MushroomEnemy";
 
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
@@ -39,6 +40,7 @@ let gsm: GameStateManager | null = null;
 let triggers: TriggerVolumes | null = null;
 let bell: FinishBell | null = null;
 let isJumping = false;
+const mushroomEnemies: MushroomEnemy[] = [];
 
 let coreInitialized = false;
 
@@ -193,6 +195,21 @@ async function initGame(): Promise<void> {
     }
   }
 
+  if (mushroomEnemies.length === 0) {
+  const enemyPlacements: [number, number][] = [
+    [10, 40],
+    [-10, 20],
+    [5, 0],
+  ];
+  for (const [ex, ez] of enemyPlacements) {
+    const enemy = new MushroomEnemy();
+    await enemy.load(scene);
+    const ey = island.getHeightAt(ex, ez);
+    enemy.group.position.set(ex, Number.isFinite(ey) ? ey : 0, ez);
+    mushroomEnemies.push(enemy);
+  }
+}
+
   yaw = 0;
   pitch = -0.12;
   updateCameraTransform();
@@ -303,6 +320,10 @@ function raf(): void {
         respawnCooldown = 1.5;
       }
     }
+
+    for (const enemy of mushroomEnemies) {
+      enemy.update(dt);
+    }   
 
     if (water) {
       water.update(dt);
