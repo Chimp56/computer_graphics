@@ -47,6 +47,7 @@ let interactionPromptEl: HTMLDivElement | null = null;
 let interactPressed = false;
 let mouseLeftDown = false;
 let mouseLeftReleased = false;
+let trajectoryPreviewEnabled = false;
 
 let coreInitialized = false;
 
@@ -203,7 +204,9 @@ async function initGame(): Promise<void> {
       bus,
       targetId: "basket-hoop-main",
     });
+    basketball.setTrajectoryPreviewEnabled(trajectoryPreviewEnabled);
     scene.add(basketball.mesh);
+    scene.add(basketball.trajectoryLine);
   }
 
   if (!player) {
@@ -260,6 +263,10 @@ function bindInput(): void {
     }
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") input.descend = true;
     if (event.code === "KeyE" && !event.repeat) interactPressed = true;
+    if (event.code === "KeyT" && !event.repeat) {
+      trajectoryPreviewEnabled = !trajectoryPreviewEnabled;
+      basketball?.setTrajectoryPreviewEnabled(trajectoryPreviewEnabled);
+    }
   });
 
   window.addEventListener("keyup", (event) => {
