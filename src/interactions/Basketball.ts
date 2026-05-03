@@ -21,7 +21,7 @@ const CHARGE_MAX_SECONDS = 2;
 const THROW_SPEED_MIN = 10;
 const THROW_SPEED_MAX = 24;
 const GRAVITY = 24;
-const SCORED_DROP_DURATION = 0.9;
+const SCORED_DROP_DURATION = 1.2;
 
 /**
  * Basketball interaction:
