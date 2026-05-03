@@ -140,4 +140,8 @@ export class PlayerController {
   get isFlyMode(): boolean {
     return this.flyMode;
   }
+
+  get isGrounded(): boolean {
+  return this.grounded;
+}
 }

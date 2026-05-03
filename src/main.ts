@@ -48,6 +48,7 @@ let interactPressed = false;
 let mouseLeftDown = false;
 let mouseLeftReleased = false;
 let trajectoryPreviewEnabled = false;
+let isJumping = false;
 
 let coreInitialized = false;
 
@@ -69,8 +70,8 @@ let yaw = 0;
 let pitch = -0.12;
 
 let playerMesh: PlayerMesh | null = null;
-const CAMERA_DISTANCE = 8;
-const CAMERA_HEIGHT = 3;
+const CAMERA_DISTANCE = 5.5;
+const CAMERA_HEIGHT = 2.5;
 
 void bus;
 // Expose bus and gsm on window for in-browser testing.
@@ -259,6 +260,7 @@ function bindInput(): void {
     if (event.code === "KeyD") input.right = true;
     if (event.code === "Space") {
       input.jump = true;
+      isJumping = true;
       event.preventDefault();
     }
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") input.descend = true;
@@ -402,9 +404,12 @@ function raf(): void {
 
     updateInteractionPrompt(basketball?.getPrompt(player.position) ?? null);
 
-    if (input.jump) {
-      playerMesh.playAnimation("jump");
-    } else if (input.forward || input.backward || input.left || input.right) {
+    const isMoving = input.forward || input.backward || input.left || input.right;
+
+    if (isJumping || !player.isGrounded) {
+      playerMesh.playAnimation("jump", true);
+      if (player.isGrounded) isJumping = false;
+    } else if (isMoving) {
       playerMesh.playAnimation("walk");
     } else {
       playerMesh.playAnimation("idle");
