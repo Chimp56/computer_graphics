@@ -63,6 +63,9 @@ export class AssetManifest {
     this.textures.load("/textures/sand.png");
     queued += 1;
 
+    this.textures.load("/textures/basketball.png");
+    queued += 1;
+
     return queued;
   }
 }

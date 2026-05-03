@@ -18,6 +18,8 @@ import { Water, WATER_LEVEL } from "./world/Water";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
+import { BasketHoop } from "./world/BasketHoop";
+import { Basketball } from "./interactions/Basketball";
 
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
@@ -38,6 +40,12 @@ let respawnCooldown = 0;
 let gsm: GameStateManager | null = null;
 let triggers: TriggerVolumes | null = null;
 let bell: FinishBell | null = null;
+let hoop: BasketHoop | null = null;
+let basketball: Basketball | null = null;
+
+let interactPressed = false;
+let mouseLeftDown = false;
+let mouseLeftReleased = false;
 
 let coreInitialized = false;
 
@@ -109,6 +117,10 @@ async function initGame(): Promise<void> {
 
     bindInput();
 
+    bus.on("targetHit", ({ targetId }) => {
+      console.log(`Basket hit: ${targetId}`);
+    });
+
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -144,6 +156,7 @@ async function initGame(): Promise<void> {
     gsm = new GameStateManager(spawnPos, bus);
     gsm.onRespawn = (pos) => {
       player?.position.set(pos.x, pos.y, pos.z);
+      basketball?.resetToSpawn();
       triggers?.reset();
     };
     gsm.onWin = (formattedTime) => {
@@ -152,7 +165,40 @@ async function initGame(): Promise<void> {
     };
 
     const startCenter = spawnPos.clone().setY(spawnY + 1);
-    triggers = new TriggerVolumes(startCenter, bellPos.clone().setY(bellPos.y + 1), bus);
+    triggers = new TriggerVolumes(
+      startCenter,
+      bellPos.clone().setY(bellPos.y + 1),
+      bus,
+    );
+
+    const hoopX = -12;
+    const hoopZ = -14;
+    const hoopGround = island.getHeightAt(hoopX, hoopZ);
+    const hoopPos = new THREE.Vector3(
+      hoopX,
+      Number.isFinite(hoopGround) ? hoopGround : 5,
+      hoopZ,
+    );
+    hoop = new BasketHoop(hoopPos);
+    scene.add(hoop.group);
+
+    const ballX = -7;
+    const ballZ = -4;
+    const ballGround = island.getHeightAt(ballX, ballZ);
+    const ballSpawn = new THREE.Vector3(
+      ballX,
+      (Number.isFinite(ballGround) ? ballGround : 5) + 0.34,
+      ballZ,
+    );
+    basketball = await Basketball.create({
+      textureLoader: assets.textures,
+      textureUrl: "/textures/basketball.png",
+      spawnPosition: ballSpawn,
+      targetBox: hoop.targetBox,
+      bus,
+      targetId: "basket-hoop-main",
+    });
+    scene.add(basketball.mesh);
   }
 
   if (!player) {
@@ -161,9 +207,9 @@ async function initGame(): Promise<void> {
   }
 
   if (!playerMesh) {
-  playerMesh = new PlayerMesh();
-  await playerMesh.load(scene);
-}
+    playerMesh = new PlayerMesh();
+    await playerMesh.load(scene);
+  }
 
   const spawnX = 0;
   const spawnZ = 70;
@@ -208,6 +254,7 @@ function bindInput(): void {
       event.preventDefault();
     }
     if (event.code === "ShiftLeft" || event.code === "ShiftRight") input.descend = true;
+    if (event.code === "KeyE" && !event.repeat) interactPressed = true;
   });
 
   window.addEventListener("keyup", (event) => {
@@ -241,6 +288,19 @@ function bindInput(): void {
     yaw = (0.5 - nx) * Math.PI * 2;
     pitch = (0.5 - ny) * MAX_PITCH * 2;
     pitch = Math.max(-MAX_PITCH, Math.min(MAX_PITCH, pitch));
+  });
+
+  window.addEventListener("mousedown", (event) => {
+    if (event.button === 0) {
+      mouseLeftDown = true;
+    }
+  });
+
+  window.addEventListener("mouseup", (event) => {
+    if (event.button === 0) {
+      mouseLeftDown = false;
+      mouseLeftReleased = true;
+    }
   });
 }
 
@@ -281,6 +341,11 @@ function raf(): void {
   clock.tick((dt) => {
     if (!player || !island || !playerMesh) return;
 
+    const consumedInteract = interactPressed;
+    const consumedMouseRelease = mouseLeftReleased;
+    interactPressed = false;
+    mouseLeftReleased = false;
+
     // 1. Input (bound via events above)
     // 2. Player physics
     updateCameraBasis();
@@ -311,6 +376,18 @@ function raf(): void {
         respawnCooldown = 1.5;
       }
     }
+
+    basketball?.update({
+      dt,
+      playerPosition: player.position,
+      camera,
+      interactPressed: consumedInteract,
+      mouseLeftDown,
+      mouseLeftReleased: consumedMouseRelease,
+      terrainHeightAt: (x, z) => island!.getHeightAt(x, z),
+      waterLevel: WATER_LEVEL,
+    });
+
     if (input.jump) {
       playerMesh.playAnimation("jump");
     } else if (input.forward || input.backward || input.left || input.right) {
@@ -353,11 +430,11 @@ function updateCameraTransform(): void {
   playerMesh.group.position.copy(player.position);
   playerMesh.group.rotation.y = yaw + Math.PI;
 
-const offset = new THREE.Vector3(
-  Math.sin(yaw) * CAMERA_DISTANCE,
-  CAMERA_HEIGHT,
-  Math.cos(yaw) * CAMERA_DISTANCE,
-);
+  const offset = new THREE.Vector3(
+    Math.sin(yaw) * CAMERA_DISTANCE,
+    CAMERA_HEIGHT,
+    Math.cos(yaw) * CAMERA_DISTANCE,
+  );
 
   camera.position.copy(player.position).add(offset);
   camera.rotation.set(pitch, yaw, 0);
