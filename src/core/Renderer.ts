@@ -11,6 +11,8 @@ export class Renderer {
     this.instance.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.instance.setSize(window.innerWidth, window.innerHeight);
     this.instance.setClearColor(0x000000, 1);
+    this.instance.shadowMap.enabled = true;
+    this.instance.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.instance.domElement);
 
     window.addEventListener("resize", this.onResize);
