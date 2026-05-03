@@ -139,6 +139,21 @@ export class Basketball {
     this.mesh.position.copy(this.spawnPosition);
   }
 
+  getPrompt(playerPosition: THREE.Vector3): string | null {
+    if (this.state === "held") {
+      return "Hold LMB to throw";
+    }
+
+    if (
+      this.state === "onGround" &&
+      this.mesh.position.distanceTo(playerPosition) <= PICKUP_RANGE
+    ) {
+      return "Press E to pick up";
+    }
+
+    return null;
+  }
+
   private updateHeldTransform(
     playerPosition: THREE.Vector3,
     camera: THREE.PerspectiveCamera,

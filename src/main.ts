@@ -42,6 +42,7 @@ let triggers: TriggerVolumes | null = null;
 let bell: FinishBell | null = null;
 let hoop: BasketHoop | null = null;
 let basketball: Basketball | null = null;
+let interactionPromptEl: HTMLDivElement | null = null;
 
 let interactPressed = false;
 let mouseLeftDown = false;
@@ -116,6 +117,10 @@ async function initGame(): Promise<void> {
     scene.add(sun);
 
     bindInput();
+
+    interactionPromptEl = document.createElement("div");
+    interactionPromptEl.className = "interaction-prompt hidden";
+    document.body.appendChild(interactionPromptEl);
 
     bus.on("targetHit", ({ targetId }) => {
       console.log(`Basket hit: ${targetId}`);
@@ -388,6 +393,8 @@ function raf(): void {
       waterLevel: WATER_LEVEL,
     });
 
+    updateInteractionPrompt(basketball?.getPrompt(player.position) ?? null);
+
     if (input.jump) {
       playerMesh.playAnimation("jump");
     } else if (input.forward || input.backward || input.left || input.right) {
@@ -438,4 +445,17 @@ function updateCameraTransform(): void {
 
   camera.position.copy(player.position).add(offset);
   camera.rotation.set(pitch, yaw, 0);
+}
+
+function updateInteractionPrompt(text: string | null): void {
+  if (!interactionPromptEl) return;
+
+  if (!text) {
+    interactionPromptEl.classList.add("hidden");
+    interactionPromptEl.textContent = "";
+    return;
+  }
+
+  interactionPromptEl.textContent = text;
+  interactionPromptEl.classList.remove("hidden");
 }
