@@ -53,12 +53,6 @@ export class BasketHoop {
     );
     pole.position.y = POST_HEIGHT * 0.5;
 
-    const arm = new THREE.Mesh(
-      new THREE.BoxGeometry(0.14, 0.1, 0.6),
-      poleMat,
-    );
-    arm.position.set(0, 3.3, 0.18);
-
     const board = new THREE.Mesh(
       new THREE.BoxGeometry(this.backboardSize.x, this.backboardSize.y, this.backboardSize.z),
       boardMat,
@@ -78,7 +72,7 @@ export class BasketHoop {
     );
     this.net.position.set(0, RIM_HEIGHT - 0.26, RIM_DEPTH);
 
-    this.group.add(pole, arm, board, rim, this.net);
+    this.group.add(pole, board, rim, this.net);
     this.group.position.copy(position);
     this.group.name = "BasketHoop";
   }
