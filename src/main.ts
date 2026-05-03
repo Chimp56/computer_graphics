@@ -200,7 +200,7 @@ async function initGame(): Promise<void> {
       textureLoader: assets.textures,
       textureUrl: "/textures/basketball.png",
       spawnPosition: ballSpawn,
-      targetBox: hoop.targetBox,
+      hoop,
       bus,
       targetId: "basket-hoop-main",
     });
@@ -422,8 +422,9 @@ function raf(): void {
     // 5. Game state & timer
     gsm?.update(dt);
     // 6. Obstacles — Phase 6
-    // 7. Bell animation
+    // 7. Bell + hoop animation
     bell?.update(dt);
+    hoop?.update(dt);
   });
 
   renderer.render(scene, camera);

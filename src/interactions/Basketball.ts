@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { type EventBus, type GameEvents } from "../core/EventBus";
+import { BasketHoop } from "../world/BasketHoop";
 
-type BasketballState = "onGround" | "held" | "flying";
+type BasketballState = "onGround" | "held" | "flying" | "scoredDrop";
 
 type BasketballUpdateParams = {
   dt: number;
@@ -20,6 +21,7 @@ const CHARGE_MAX_SECONDS = 2;
 const THROW_SPEED_MIN = 10;
 const THROW_SPEED_MAX = 24;
 const GRAVITY = 24;
+const SCORED_DROP_DURATION = 0.9;
 
 /**
  * Basketball interaction:
@@ -36,16 +38,19 @@ export class Basketball {
   private readonly throwDirection = new THREE.Vector3();
   private readonly trajectorySimPos = new THREE.Vector3();
   private readonly trajectorySimVel = new THREE.Vector3();
+  private readonly previousPosition = new THREE.Vector3();
+  private readonly rimCenter = new THREE.Vector3();
 
   private state: BasketballState = "onGround";
   private chargeTime = 0;
   private scoredThisFlight = false;
+  private scoredDropTime = 0;
   private trajectoryPreviewEnabled = false;
 
   private constructor(
     mesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshPhongMaterial>,
     spawnPosition: THREE.Vector3,
-    private readonly targetBox: THREE.Box3,
+    private readonly hoop: BasketHoop,
     private readonly bus: EventBus<GameEvents>,
     private readonly targetId = "basket-hoop",
   ) {
@@ -64,7 +69,7 @@ export class Basketball {
     textureLoader: THREE.TextureLoader;
     textureUrl: string;
     spawnPosition: THREE.Vector3;
-    targetBox: THREE.Box3;
+    hoop: BasketHoop;
     bus: EventBus<GameEvents>;
     targetId?: string;
   }): Promise<Basketball> {
@@ -84,7 +89,7 @@ export class Basketball {
     return new Basketball(
       mesh,
       params.spawnPosition,
-      params.targetBox,
+      params.hoop,
       params.bus,
       params.targetId,
     );
@@ -130,18 +135,53 @@ export class Basketball {
 
     this.trajectoryLine.visible = false;
 
+    if (this.state === "scoredDrop") {
+      this.scoredDropTime -= params.dt;
+      this.hoop.getRimCenter(this.rimCenter);
+
+      this.velocity.y -= GRAVITY * params.dt * 0.4;
+      this.mesh.position.x = this.rimCenter.x;
+      this.mesh.position.z = this.rimCenter.z;
+      this.mesh.position.y += this.velocity.y * params.dt;
+
+      this.mesh.rotation.x += 3.5 * params.dt;
+
+      const ground = params.terrainHeightAt(this.mesh.position.x, this.mesh.position.z);
+      if (Number.isFinite(ground) && this.mesh.position.y <= ground + BALL_RADIUS * 0.95) {
+        this.resetToSpawn();
+        return;
+      }
+
+      if (this.scoredDropTime <= 0 || this.mesh.position.y < params.waterLevel - 1) {
+        this.resetToSpawn();
+      }
+      return;
+    }
+
     // Flying
+    this.previousPosition.copy(this.mesh.position);
+
     this.velocity.y -= GRAVITY * params.dt;
     this.mesh.position.addScaledVector(this.velocity, params.dt);
+
+    this.hoop.resolveBackboardCollision(
+      this.previousPosition,
+      this.mesh.position,
+      this.velocity,
+      BALL_RADIUS,
+    );
 
     // Air rotation while flying
     this.mesh.rotation.x += this.velocity.length() * params.dt * 0.08;
     this.mesh.rotation.z += this.velocity.length() * params.dt * 0.04;
 
-    if (!this.scoredThisFlight && this.targetBox.containsPoint(this.mesh.position)) {
+    if (
+      !this.scoredThisFlight &&
+      this.hoop.checkScored(this.previousPosition, this.mesh.position, BALL_RADIUS)
+    ) {
       this.scoredThisFlight = true;
       this.bus.emit("targetHit", { targetId: this.targetId });
-      this.resetToSpawn();
+      this.startScoredDrop();
       return;
     }
 
@@ -160,6 +200,7 @@ export class Basketball {
     this.state = "onGround";
     this.chargeTime = 0;
     this.scoredThisFlight = false;
+    this.scoredDropTime = 0;
     this.velocity.set(0, 0, 0);
     this.mesh.position.copy(this.spawnPosition);
     this.trajectoryLine.visible = false;
@@ -185,6 +226,17 @@ export class Basketball {
     }
 
     return null;
+  }
+
+  private startScoredDrop(): void {
+    this.state = "scoredDrop";
+    this.scoredDropTime = SCORED_DROP_DURATION;
+    this.chargeTime = 0;
+
+    this.hoop.triggerNetSwoosh();
+    this.hoop.getRimCenter(this.rimCenter);
+    this.mesh.position.copy(this.rimCenter).addScaledVector(THREE.Object3D.DEFAULT_UP, -0.08);
+    this.velocity.set(0, -2.4, 0);
   }
 
   private updateHeldTransform(
