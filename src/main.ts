@@ -228,7 +228,10 @@ async function initGame(): Promise<void> {
   player.position.set(spawnX, spawnY, spawnZ);
 
   if (!water) {
-    water = new Water();
+    water = await Water.create({
+      textureLoader: assets.textures,
+      textureUrl: "/textures/water.png",
+    });
     scene.add(water.mesh);
   }
 
