@@ -198,7 +198,7 @@ async function initGame(): Promise<void> {
     );
     basketball = await Basketball.create({
       textureLoader: assets.textures,
-      textureUrl: "/textures/basketball.png",
+      textureUrl: "/textures/basketball_lines.png",
       spawnPosition: ballSpawn,
       hoop,
       bus,
