@@ -82,6 +82,51 @@ export class FinishBell {
     this.wobbleTime = WOBBLE_DURATION;
   }
 
+  /** Pushes player out of bell solids (post + bell body). */
+  resolvePlayerCollision(position: THREE.Vector3, playerRadius: number): boolean {
+    let collided = false;
+
+    // Post cylinder
+    const postDx = position.x - this.group.position.x;
+    const postDz = position.z - this.group.position.z;
+    const postDist = Math.sqrt(postDx * postDx + postDz * postDz);
+    const postMin = 0.13 + playerRadius;
+    if (postDist < postMin) {
+      if (postDist < 1e-6) {
+        position.x += postMin;
+      } else {
+        const push = postMin - postDist;
+        position.x += (postDx / postDist) * push;
+        position.z += (postDz / postDist) * push;
+      }
+      collided = true;
+    }
+
+    // Bell body approximate sphere
+    const bellCenter = new THREE.Vector3(
+      this.group.position.x,
+      this.group.position.y + 2.32,
+      this.group.position.z,
+    );
+    const dx = position.x - bellCenter.x;
+    const dy = position.y - bellCenter.y;
+    const dz = position.z - bellCenter.z;
+    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    const minDist = 0.42 + playerRadius;
+    if (dist < minDist) {
+      const nx = dist > 1e-6 ? dx / dist : 1;
+      const ny = dist > 1e-6 ? dy / dist : 0;
+      const nz = dist > 1e-6 ? dz / dist : 0;
+      const push = minDist - dist;
+      position.x += nx * push;
+      position.y += ny * push;
+      position.z += nz * push;
+      collided = true;
+    }
+
+    return collided;
+  }
+
   /** Call once per fixed-timestep tick (dt in seconds). */
   update(dt: number): void {
     if (this.wobbleTime <= 0) {
