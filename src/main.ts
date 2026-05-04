@@ -231,6 +231,7 @@ async function initGame(): Promise<void> {
     };
     gsm.onWin = (formattedTime) => {
       bell?.ring();
+      fireworks?.celebrate(new THREE.Vector3(0, 22, 0));
       console.log(`Run complete! Time: ${formattedTime}`);
     };
 
@@ -852,6 +853,9 @@ function raf(): void {
     }
     // 5. Game state & timer
     gsm?.update(dt);
+    if (gsm && hud) {
+      hud.updateTimer(gsm.context.elapsedTime);
+    }
     // 6. Obstacles — Phase 6
     // 7. Bell + hoop animation
     bell?.update(dt);
@@ -885,6 +889,7 @@ function updatePortals(dt: number): void {
 
   if (levelState.current === "island") {
     if (islandPortalToL1?.checkEnter(pos)) {
+      bus.emit("runStarted", undefined);
       transitionTo("level1");
       return;
     }
@@ -977,8 +982,8 @@ function updatePortals(dt: number): void {
       return;
     }
     if (l5ExitToIsland?.checkEnter(pos)) {
+      bus.emit("runWon", { time: gsm?.context.elapsedTime ?? 0 });
       transitionTo("island");
-      fireworks?.celebrate(new THREE.Vector3(0, 22, 0));
     }
   }
 }
