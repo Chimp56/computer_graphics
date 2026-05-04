@@ -203,7 +203,7 @@ async function initGame(): Promise<void> {
   if (!island) {
     island = await Island.create({
       textureLoader: assets.textures,
-      heightmapUrl: "/textures/heightmap2.png",
+      heightmapUrl: "/textures/heightmap.png",
       sandTextureUrl: "/textures/sand.png",
       maxHeight: 18,
     });
