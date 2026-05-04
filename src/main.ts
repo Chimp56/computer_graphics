@@ -18,8 +18,11 @@ import { Water, WATER_LEVEL } from "./world/Water";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
+import { MushroomEnemy } from "./enemies/MushroomEnemy";
 import { BasketHoop } from "./world/BasketHoop";
 import { Basketball } from "./interactions/Basketball";
+import { Coin } from "./world/Coin";
+import { HUD } from "./ui/HUD";
 import { Level } from "./world/Level";
 import { Portal } from "./world/Portal";
 import { WaterfallLevel } from "./world/WaterfallLevel";
@@ -102,6 +105,11 @@ let mouseLeftDown = false;
 let mouseLeftReleased = false;
 let trajectoryPreviewEnabled = false;
 let isJumping = false;
+const mushroomEnemies: MushroomEnemy[] = [];
+const coins: Coin[] = [];
+let hud: HUD | null = null;
+
+
 
 let coreInitialized = false;
 
@@ -158,6 +166,8 @@ async function initGame(): Promise<void> {
     renderer = new Renderer();
     scene = createScene();
     clock = new GameClock();
+    hud = new HUD();
+
 
     camera = new THREE.PerspectiveCamera(
       70,
@@ -306,6 +316,36 @@ async function initGame(): Promise<void> {
   if (!fireworks) {
     fireworks = new Fireworks();
     scene.add(fireworks.points);
+  }
+
+  if (mushroomEnemies.length === 0) {
+  const enemyPlacements: [number, number][] = [
+    [10, 40],
+    [-10, 20],
+    [5, 0],
+  ];
+  for (const [ex, ez] of enemyPlacements) {
+    const enemy = new MushroomEnemy();
+    await enemy.load(scene);
+    const ey = island.getHeightAt(ex, ez);
+    enemy.group.position.set(ex, Number.isFinite(ey) ? ey : 0, ez);
+    mushroomEnemies.push(enemy);
+  }
+}
+
+  if (coins.length === 0) {
+    const coinPlacements: [number, number][] = [
+      [5, 40],
+      [-5, 20],
+      [8, 0],
+    ];
+    for (const [cx, cz] of coinPlacements) {
+      const coin = new Coin();
+      await coin.load(scene);
+      const cy = island.getHeightAt(cx, cz);
+      coin.group.position.set(cx, Number.isFinite(cy) ? cy + 1 : 1, cz);
+      coins.push(coin);
+    }
   }
 
   yaw = 0;
@@ -744,51 +784,11 @@ function raf(): void {
       const solid = obs.checkSolid(player.position);
       if (solid) player.position.add(solid);
 
-      if (obs.checkKnockback(player.position) && respawnCooldown === 0) {
+      // Arm hit → respawn immediately (same cooldown as water respawn)
+      if (obs.checkKnockback(player.position) && respawnCooldown === 0 && water) {
         respawnInCurrentLocation();
         break;
       }
-    }
-
-    pistonHitCooldown = Math.max(0, pistonHitCooldown - dt);
-    if (pistonHitCooldown === 0) {
-      let hit: ReturnType<NonNullable<typeof level3>["checkPistonHit"]> = null;
-      if (levelState.current === "level3" && level3) {
-        hit = level3.checkPistonHit(player.position);
-      } else if (levelState.current === "level5" && level5) {
-        hit = level5.checkPistonHit(player.position);
-      }
-      if (hit) {
-        const knock = hit.direction.clone().multiplyScalar(48);
-        player.applyKnockback(new THREE.Vector3(knock.x, 9, knock.z));
-        pistonHitCooldown = 0.8;
-      }
-    }
-
-    plungerHitCooldown = Math.max(0, plungerHitCooldown - dt);
-    if (plungerHitCooldown === 0 && !player.isStuck()) {
-      if (levelState.current === "level4" && level4) {
-        const hit = level4.checkPlungerHit(player.position);
-        if (hit) {
-          const slide = level4.downhillDir.clone().multiplyScalar(7);
-          player.setStuck(3, slide);
-          plungerHitCooldown = 3.2;
-        }
-      } else if (levelState.current === "level5" && level5) {
-        const hit = level5.checkPlungerHit(player.position);
-        if (hit) {
-          // Level 5 slope is shallower than Lvl 4; slide a bit slower.
-          player.setStuck(3, new THREE.Vector3(0, 0, -6));
-          plungerHitCooldown = 3.2;
-        }
-      }
-    }
-
-    if (levelState.current === "level5" && level5) {
-      level5.pollCheckpointEntries(player.position);
-      const newSpawn = level5.getActiveSpawn();
-      levelState.level5Spawn.copy(newSpawn);
-      applyLevel5Physics(level5.getActiveSection(player.position));
     }
 
     if (water) {
@@ -798,6 +798,22 @@ function raf(): void {
         respawnInCurrentLocation();
       }
     }
+
+    for (const enemy of mushroomEnemies) {
+    enemy.update(dt);
+    if (enemy.checkHit(player.position) && respawnCooldown === 0 && water) {
+      const spawn = water.randomSpawn((x, z) => island!.getHeightAt(x, z));
+      player.teleport(spawn);
+      respawnCooldown = 1.5;
+      }
+    }
+
+    for (const coin of coins) {
+    coin.update(dt);
+    if (coin.checkCollect(player.position)) {
+      hud?.addCoin();
+    }
+  }
 
     updatePortals(dt);
 
