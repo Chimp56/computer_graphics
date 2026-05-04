@@ -21,6 +21,8 @@ import { FinishBell } from "./world/FinishBell";
 import { MushroomEnemy } from "./enemies/MushroomEnemy";
 import { BasketHoop } from "./world/BasketHoop";
 import { Basketball } from "./interactions/Basketball";
+import { Coin } from "./world/Coin";
+import { HUD } from "./ui/HUD";
 
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
@@ -51,6 +53,10 @@ let mouseLeftReleased = false;
 let trajectoryPreviewEnabled = false;
 let isJumping = false;
 const mushroomEnemies: MushroomEnemy[] = [];
+const coins: Coin[] = [];
+let hud: HUD | null = null;
+
+
 
 let coreInitialized = false;
 
@@ -107,6 +113,8 @@ async function initGame(): Promise<void> {
     renderer = new Renderer();
     scene = createScene();
     clock = new GameClock();
+    hud = new HUD();
+
 
     camera = new THREE.PerspectiveCamera(
       70,
@@ -264,6 +272,21 @@ async function initGame(): Promise<void> {
   }
 }
 
+  if (coins.length === 0) {
+    const coinPlacements: [number, number][] = [
+      [5, 40],
+      [-5, 20],
+      [8, 0],
+    ];
+    for (const [cx, cz] of coinPlacements) {
+      const coin = new Coin();
+      await coin.load(scene);
+      const cy = island.getHeightAt(cx, cz);
+      coin.group.position.set(cx, Number.isFinite(cy) ? cy + 1 : 1, cz);
+      coins.push(coin);
+    }
+  }
+
   yaw = 0;
   pitch = -0.12;
   updateCameraTransform();
@@ -398,9 +421,6 @@ function raf(): void {
       }
     }
 
-    for (const enemy of mushroomEnemies) {
-      enemy.update(dt);
-    }   
 
     if (water) {
       water.update(dt);
@@ -411,6 +431,22 @@ function raf(): void {
         respawnCooldown = 1.5;
       }
     }
+
+    for (const enemy of mushroomEnemies) {
+    enemy.update(dt);
+    if (enemy.checkHit(player.position) && respawnCooldown === 0 && water) {
+      const spawn = water.randomSpawn((x, z) => island!.getHeightAt(x, z));
+      player.teleport(spawn);
+      respawnCooldown = 1.5;
+      }
+    }
+
+    for (const coin of coins) {
+    coin.update(dt);
+    if (coin.checkCollect(player.position)) {
+      hud?.addCoin();
+    }
+  }
 
     basketball?.update({
       dt,

@@ -37,4 +37,11 @@ export class MushroomEnemy {
   update(dt: number): void {
     this.mixer?.update(dt);
   }
+
+  checkHit(playerPos: THREE.Vector3): boolean {
+    const dx = playerPos.x - this.group.position.x;
+    const dz = playerPos.z - this.group.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    return dist < 1.5;
+  }
 }
