@@ -6,8 +6,8 @@ import { EventBus, type GameEvents } from "../core/EventBus";
  * Players outside this box trigger a respawn (OOB).
  */
 const OOB_BOUNDS = new THREE.Box3(
-  new THREE.Vector3(-110, -20, -110),
-  new THREE.Vector3(110, 80, 110),
+  new THREE.Vector3(-260, -20, -260),
+  new THREE.Vector3(260, 80, 260),
 );
 
 /** Y threshold below which a player is considered to have fallen into water. */
