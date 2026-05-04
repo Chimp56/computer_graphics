@@ -4,11 +4,11 @@ const ARM_LENGTH = 4.5;
 const ARM_HEIGHT = 2.2;
 const NUM_ARMS = 3;
 const ROTATE_SPEED = 1.5; // rad/s
-const ARM_SPHERE_RADIUS = 0.55;
-const TIP_SPHERE_RADIUS = 0.35;
+const ARM_SPHERE_RADIUS = 0.13;
+const TIP_SPHERE_RADIUS = 0.30;
 const SPHERES_PER_ARM = 5;
-const POLE_RADIUS = 0.5;
-const PLAYER_RADIUS = 0.4;
+const POLE_RADIUS = 0.22;
+const PLAYER_RADIUS = 0.18;
 
 function createStripedTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
