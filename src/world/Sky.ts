@@ -46,7 +46,11 @@ export class Sky {
   update(dt: number): void {
     this.elapsed += dt;
 
-    const phase = (this.elapsed / DAY_CYCLE_SECONDS) * Math.PI * 2;
+    const cycleT = (this.elapsed / DAY_CYCLE_SECONDS) % 1;
+    const phase =
+      cycleT < 0.8
+        ? (cycleT / 0.8) * Math.PI
+        : Math.PI + ((cycleT - 0.8) / 0.2) * Math.PI;
     const y = Math.sin(phase) * 125;
 
     this.sunLight.position.set(
