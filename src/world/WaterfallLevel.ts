@@ -148,6 +148,8 @@ export class WaterfallLevel {
       walkwayMat,
     );
     walkway.position.set(cx, PLATFORM_Y - PLATFORM_THICKNESS / 2, cz);
+    walkway.castShadow = true;
+    walkway.receiveShadow = true;
     this.group.add(walkway);
 
     const wetSheen = new THREE.Mesh(
@@ -173,6 +175,8 @@ export class WaterfallLevel {
       rockMat,
     );
     rockWall.position.set(cx, PLATFORM_Y + ROCK_WALL_HEIGHT / 2 - 2, wallZ);
+    rockWall.castShadow = true;
+    rockWall.receiveShadow = true;
     this.group.add(rockWall);
 
     const ledge = new THREE.Mesh(
@@ -184,6 +188,8 @@ export class WaterfallLevel {
       PLATFORM_Y + ROCK_WALL_HEIGHT - 2 + 0.5,
       wallZ,
     );
+    ledge.castShadow = true;
+    ledge.receiveShadow = true;
     this.group.add(ledge);
 
     this.waterfallTex = buildWaterfallTexture();

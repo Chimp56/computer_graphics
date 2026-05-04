@@ -107,6 +107,8 @@ export class FountainLevel {
       this.footCenter.z - SLOPE_LENGTH / 2,
     );
     slope.rotation.x = Math.atan2(TOP_RISE, SLOPE_LENGTH);
+    slope.castShadow = true;
+    slope.receiveShadow = true;
     this.group.add(slope);
 
     const terraceMat = new THREE.MeshPhongMaterial({
@@ -125,6 +127,8 @@ export class FountainLevel {
         terraceMat,
       );
       cascade.position.set(this.footCenter.x, ty, tz);
+      cascade.castShadow = true;
+      cascade.receiveShadow = true;
       this.group.add(cascade);
     }
 
@@ -147,6 +151,8 @@ export class FountainLevel {
         this.footCenter.y + TOP_RISE / 2 + WALL_HEIGHT / 2 - 1,
         this.footCenter.z - SLOPE_LENGTH / 2,
       );
+      wall.castShadow = true;
+      wall.receiveShadow = true;
       this.group.add(wall);
     }
 

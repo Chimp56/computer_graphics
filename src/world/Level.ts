@@ -53,6 +53,8 @@ export class Level {
         platformMat,
       );
       slab.position.set(p.x, this.platformY - PLATFORM_THICKNESS / 2, p.z);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
       this.group.add(slab);
 
       const trim = new THREE.Mesh(
@@ -64,6 +66,8 @@ export class Level {
         this.platformY - PLATFORM_THICKNESS - 0.05,
         p.z,
       );
+      trim.castShadow = true;
+      trim.receiveShadow = true;
       this.group.add(trim);
     }
 

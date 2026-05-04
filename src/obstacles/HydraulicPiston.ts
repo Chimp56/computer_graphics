@@ -73,12 +73,16 @@ export class HydraulicPiston {
     const headGeo = new THREE.CylinderGeometry(HEAD_RADIUS, HEAD_RADIUS, HEAD_LENGTH, 18);
     headGeo.rotateX(Math.PI / 2);
     this.head = new THREE.Mesh(headGeo, headMat);
+    this.head.castShadow = true;
+    this.head.receiveShadow = true;
     this.group.add(this.head);
 
     const portGeo = new THREE.CircleGeometry(HEAD_RADIUS + 0.1, 24);
     this.port = new THREE.Mesh(portGeo, portMat);
     this.port.position.set(0, 0, WALL_FRONT_LOCAL - 0.02);
     this.port.rotation.y = Math.PI;
+    this.port.castShadow = true;
+    this.port.receiveShadow = true;
     this.group.add(this.port);
 
     const splashGeo = new THREE.RingGeometry(HEAD_RADIUS + 0.05, HEAD_RADIUS + 1.1, 24);

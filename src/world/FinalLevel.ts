@@ -73,6 +73,8 @@ export class FinalLevel {
         padMat,
       );
       slab.position.set(p.x, y - SLAB_THICKNESS / 2, p.z);
+      slab.castShadow = true;
+      slab.receiveShadow = true;
       this.group.add(slab);
 
       const trim = new THREE.Mesh(
@@ -80,6 +82,8 @@ export class FinalLevel {
         trimMat,
       );
       trim.position.set(p.x, y - SLAB_THICKNESS - 0.05, p.z);
+      trim.castShadow = true;
+      trim.receiveShadow = true;
       this.group.add(trim);
     }
 
@@ -99,6 +103,8 @@ export class FinalLevel {
       rockMat,
     );
     rockWall.position.set(CX + 4.7, BASE_Y + 8, 158);
+    rockWall.castShadow = true;
+    rockWall.receiveShadow = true;
     this.group.add(rockWall);
 
     this.waterfallTex = buildWaterfallTexture();
@@ -154,6 +160,8 @@ export class FinalLevel {
       SLOPE_FOOT_Z + SLOPE_LEN / 2,
     );
     slope.rotation.x = -Math.atan2(SLOPE_RISE, SLOPE_LEN);
+    slope.castShadow = true;
+    slope.receiveShadow = true;
     this.group.add(slope);
 
     const slopeWallMat = new THREE.MeshPhongMaterial({
@@ -174,6 +182,8 @@ export class FinalLevel {
         BASE_Y + SLOPE_RISE / 2 + 5,
         SLOPE_FOOT_Z + SLOPE_LEN / 2,
       );
+      wall.castShadow = true;
+      wall.receiveShadow = true;
       this.group.add(wall);
     }
 
