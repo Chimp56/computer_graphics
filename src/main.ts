@@ -15,6 +15,7 @@ import {
 } from "./player/PlayerController";
 import { WipeoutObstacle } from "./obstacles/WipeoutObstacle";
 import { Water, WATER_LEVEL } from "./world/Water";
+import { Sky } from "./world/Sky";
 import { GameStateManager } from "./game/GameStateManager";
 import { TriggerVolumes } from "./world/TriggerVolumes";
 import { FinishBell } from "./world/FinishBell";
@@ -45,6 +46,7 @@ let island: Island | null = null;
 let player: PlayerController | null = null;
 const wipeouts: WipeoutObstacle[] = [];
 let water: Water | null = null;
+let sky: Sky | null = null;
 let respawnCooldown = 0;
 let pistonHitCooldown = 0;
 let plungerHitCooldown = 0;
@@ -177,9 +179,8 @@ async function initGame(): Promise<void> {
     );
     camera.rotation.order = "YXZ";
 
-    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-    sun.position.set(80, 120, 40);
-    scene.add(sun);
+    sky = new Sky();
+    scene.add(sky.group);
 
     bindInput();
 
@@ -202,7 +203,9 @@ async function initGame(): Promise<void> {
   if (!island) {
     island = await Island.create({
       textureLoader: assets.textures,
+      heightmapUrl: "/textures/heightmap.png",
       sandTextureUrl: "/textures/sand.png",
+      maxHeight: 18,
     });
     scene.add(island.mesh);
 
@@ -292,7 +295,10 @@ async function initGame(): Promise<void> {
   player.position.set(spawnX, spawnY, spawnZ);
 
   if (!water) {
-    water = new Water();
+    water = await Water.create({
+      textureLoader: assets.textures,
+      textureUrl: "/textures/water.png",
+    });
     scene.add(water.mesh);
   }
 
@@ -857,9 +863,10 @@ function raf(): void {
       hud.updateTimer(gsm.context.elapsedTime);
     }
     // 6. Obstacles — Phase 6
-    // 7. Bell + hoop animation
+    // 7. Bell + hoop + sky animation
     bell?.update(dt);
     hoop?.update(dt);
+    sky?.update(dt);
   });
 
   renderer.render(scene, camera);

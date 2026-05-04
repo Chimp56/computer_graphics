@@ -77,6 +77,13 @@ export class WipeoutObstacle {
         this.collisionSpheres.push(new THREE.Sphere(new THREE.Vector3(), r));
       }
     }
+
+    this.mesh.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
   }
 
   update(dt: number): void {

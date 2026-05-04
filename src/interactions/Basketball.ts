@@ -84,6 +84,8 @@ export class Basketball {
 
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_RADIUS, 24, 24), material);
     mesh.position.copy(params.spawnPosition);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     mesh.name = "Basketball";
 
     return new Basketball(

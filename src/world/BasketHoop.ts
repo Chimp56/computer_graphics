@@ -52,12 +52,16 @@ export class BasketHoop {
       poleMat,
     );
     pole.position.y = POST_HEIGHT * 0.5;
+    pole.castShadow = true;
+    pole.receiveShadow = true;
 
     const board = new THREE.Mesh(
       new THREE.BoxGeometry(this.backboardSize.x, this.backboardSize.y, this.backboardSize.z),
       boardMat,
     );
     board.position.copy(this.backboardCenterLocal);
+    board.castShadow = true;
+    board.receiveShadow = true;
 
     const rim = new THREE.Mesh(
       new THREE.TorusGeometry(RIM_RADIUS, 0.035, 14, 28),
@@ -65,12 +69,16 @@ export class BasketHoop {
     );
     rim.rotation.x = Math.PI * 0.5;
     rim.position.copy(this.rimCenterLocal);
+    rim.castShadow = true;
+    rim.receiveShadow = true;
 
     this.net = new THREE.Mesh(
       new THREE.CylinderGeometry(0.36, 0.22, 0.48, 14, 1, true),
       netMat,
     );
     this.net.position.set(0, RIM_HEIGHT - 0.26, RIM_DEPTH);
+    this.net.castShadow = true;
+    this.net.receiveShadow = true;
 
     this.group.add(pole, board, rim, this.net);
     this.group.position.copy(position);

@@ -81,10 +81,14 @@ export class SuctionPlunger {
     cupGeo.rotateX(Math.PI / 2);
     cupMat.side = THREE.DoubleSide;
     this.cup = new THREE.Mesh(cupGeo, cupMat);
+    this.cup.castShadow = true;
+    this.cup.receiveShadow = true;
     this.group.add(this.cup);
 
     const rimGeo = new THREE.TorusGeometry(CUP_FRONT_RADIUS, 0.08, 8, 24);
     this.rim = new THREE.Mesh(rimGeo, rimMat);
+    this.rim.castShadow = true;
+    this.rim.receiveShadow = true;
     this.group.add(this.rim);
 
     this.rod = new THREE.Mesh(
@@ -92,12 +96,16 @@ export class SuctionPlunger {
       rodMat,
     );
     this.rod.geometry.rotateX(Math.PI / 2);
+    this.rod.castShadow = true;
+    this.rod.receiveShadow = true;
     this.group.add(this.rod);
 
     const portGeo = new THREE.CircleGeometry(CUP_FRONT_RADIUS + 0.12, 24);
     this.port = new THREE.Mesh(portGeo, portMat);
     this.port.position.set(0, 0, WALL_FRONT_LOCAL - 0.02);
     this.port.rotation.y = Math.PI;
+    this.port.castShadow = true;
+    this.port.receiveShadow = true;
     this.group.add(this.port);
 
     const yaw = Math.atan2(this.direction.x, this.direction.z);

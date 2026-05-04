@@ -14,6 +14,12 @@ load(scene: THREE.Scene): Promise<void> {
       "/character/character.fbx",
       (fbx) => {
         fbx.scale.setScalar(0.01);
+        fbx.traverse((obj) => {
+          if (obj instanceof THREE.Mesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+        });
         this.mixer = new THREE.AnimationMixer(fbx);
         this.group.add(fbx);
         scene.add(this.group);
