@@ -34,6 +34,7 @@ import { BeachDecor } from "./world/BeachDecor";
 
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
+const PLAYER_COLLISION_RADIUS = 0.33;
 
 const loader = new Loader();
 const assets = new AssetManifest();
@@ -49,6 +50,7 @@ const wipeouts: WipeoutObstacle[] = [];
 let water: Water | null = null;
 let sky: Sky | null = null;
 let respawnCooldown = 0;
+let wipeoutHitCooldown = 0;
 let pistonHitCooldown = 0;
 let plungerHitCooldown = 0;
 let gsm: GameStateManager | null = null;
@@ -772,6 +774,8 @@ function raf(): void {
       groundHeight = h ?? undefined;
     }
     player.update(dt, groundHeight);
+    hoop?.resolvePlayerCollision(player.position, PLAYER_COLLISION_RADIUS);
+    bell?.resolvePlayerCollision(player.position, PLAYER_COLLISION_RADIUS);
 
     for (const obs of wipeouts) obs.update(dt);
     level1?.update(dt);
@@ -792,15 +796,26 @@ function raf(): void {
               ? level5?.wipeouts ?? []
               : [];
 
+    wipeoutHitCooldown = Math.max(0, wipeoutHitCooldown - dt);
     for (const obs of activeWipeouts) {
+      const knockDir = obs.checkKnockback(player.position);
+      if (knockDir && wipeoutHitCooldown === 0) {
+        const knockSpeed = 30;
+        player.applyKnockback(new THREE.Vector3(
+          knockDir.x * knockSpeed,
+          5.6,
+          knockDir.z * knockSpeed,
+        ));
+        player.setStuck(0.35, new THREE.Vector3(
+          knockDir.x * knockSpeed,
+          0,
+          knockDir.z * knockSpeed,
+        ));
+        wipeoutHitCooldown = 0.45;
+      }
+
       const solid = obs.checkSolid(player.position);
       if (solid) player.position.add(solid);
-
-      // Arm hit → respawn immediately (same cooldown as water respawn)
-      if (obs.checkKnockback(player.position) && respawnCooldown === 0 && water) {
-        respawnInCurrentLocation();
-        break;
-      }
     }
 
     if (levelState.current === "level5" && level5) {

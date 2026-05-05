@@ -4,8 +4,10 @@ const POST_HEIGHT = 3.6;
 const RIM_HEIGHT = 3.05;
 const RIM_DEPTH = 0.55;
 const RIM_RADIUS = 0.45;
+const RIM_TUBE_RADIUS = 0.035;
 
 const NET_SWOOSH_DURATION = 0.45;
+const POLE_RADIUS = 0.14;
 
 /**
  * Simple basketball hoop made from primitive meshes.
@@ -64,7 +66,7 @@ export class BasketHoop {
     board.receiveShadow = true;
 
     const rim = new THREE.Mesh(
-      new THREE.TorusGeometry(RIM_RADIUS, 0.035, 14, 28),
+      new THREE.TorusGeometry(RIM_RADIUS, RIM_TUBE_RADIUS, 14, 28),
       rimMat,
     );
     rim.rotation.x = Math.PI * 0.5;
@@ -117,6 +119,158 @@ export class BasketHoop {
 
   getScoreRadius(ballRadius: number): number {
     return Math.max(0.1, RIM_RADIUS - ballRadius * 0.55);
+  }
+
+  /** Pushes player out of hoop solids (pole, backboard, rim). */
+  resolvePlayerCollision(position: THREE.Vector3, playerRadius: number): boolean {
+    let collided = false;
+
+    // Pole
+    const dx = position.x - this.group.position.x;
+    const dz = position.z - this.group.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const minDist = POLE_RADIUS + playerRadius;
+    if (dist < minDist) {
+      if (dist < 1e-6) {
+        position.x += minDist;
+      } else {
+        const push = minDist - dist;
+        position.x += (dx / dist) * push;
+        position.z += (dz / dist) * push;
+      }
+      collided = true;
+    }
+
+    // Backboard (thin AABB)
+    this.boardCenterWorld.copy(this.backboardCenterLocal).add(this.group.position);
+    const relX = position.x - this.boardCenterWorld.x;
+    const relY = position.y - this.boardCenterWorld.y;
+    const relZ = position.z - this.boardCenterWorld.z;
+    const halfX = this.backboardSize.x * 0.5 + playerRadius;
+    const halfY = this.backboardSize.y * 0.5 + playerRadius;
+    const halfZ = this.backboardSize.z * 0.5 + playerRadius;
+    if (Math.abs(relX) < halfX && Math.abs(relY) < halfY && Math.abs(relZ) < halfZ) {
+      const px = halfX - Math.abs(relX);
+      const pz = halfZ - Math.abs(relZ);
+      if (px < pz) {
+        position.x += relX >= 0 ? px : -px;
+      } else {
+        position.z += relZ >= 0 ? pz : -pz;
+      }
+      collided = true;
+    }
+
+    // Rim ring (torus tube)
+    this.getRimCenter(this.rimCenterWorld);
+    const rx = position.x - this.rimCenterWorld.x;
+    const ry = position.y - this.rimCenterWorld.y;
+    const rz = position.z - this.rimCenterWorld.z;
+    const radial = Math.sqrt(rx * rx + rz * rz);
+    if (radial > 1e-6) {
+      const ringX = this.rimCenterWorld.x + (rx / radial) * RIM_RADIUS;
+      const ringZ = this.rimCenterWorld.z + (rz / radial) * RIM_RADIUS;
+      const tx = position.x - ringX;
+      const tz = position.z - ringZ;
+      const tubeDist = Math.sqrt(tx * tx + ry * ry + tz * tz);
+      const minTubeDist = RIM_TUBE_RADIUS + playerRadius;
+      if (tubeDist < minTubeDist) {
+        const nx = tubeDist > 1e-6 ? tx / tubeDist : 1;
+        const ny = tubeDist > 1e-6 ? ry / tubeDist : 0;
+        const nz = tubeDist > 1e-6 ? tz / tubeDist : 0;
+        const push = minTubeDist - tubeDist;
+        position.x += nx * push;
+        position.y += ny * push;
+        position.z += nz * push;
+        collided = true;
+      }
+    }
+
+    return collided;
+  }
+
+  /** Prevents the ball from passing through the pole; reflects horizontal velocity. */
+  resolvePoleCollision(
+    currentPosition: THREE.Vector3,
+    velocity: THREE.Vector3,
+    ballRadius: number,
+  ): boolean {
+    const minY = this.group.position.y;
+    const maxY = this.group.position.y + POST_HEIGHT;
+    if (currentPosition.y + ballRadius < minY || currentPosition.y - ballRadius > maxY) {
+      return false;
+    }
+
+    const dx = currentPosition.x - this.group.position.x;
+    const dz = currentPosition.z - this.group.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    const minDist = POLE_RADIUS + ballRadius;
+    if (dist >= minDist) return false;
+
+    if (dist < 1e-6) {
+      currentPosition.x += minDist;
+      velocity.x = Math.abs(velocity.x) * 0.5;
+      velocity.z *= 0.7;
+      return true;
+    }
+
+    const nx = dx / dist;
+    const nz = dz / dist;
+    const push = minDist - dist;
+    currentPosition.x += nx * push;
+    currentPosition.z += nz * push;
+
+    const vn = velocity.x * nx + velocity.z * nz;
+    if (vn < 0) {
+      velocity.x -= vn * nx * 1.6;
+      velocity.z -= vn * nz * 1.6;
+      velocity.x *= 0.82;
+      velocity.z *= 0.82;
+    }
+
+    return true;
+  }
+
+  /** Ball collision against the rim torus tube. */
+  resolveRimCollision(
+    currentPosition: THREE.Vector3,
+    velocity: THREE.Vector3,
+    ballRadius: number,
+  ): boolean {
+    this.getRimCenter(this.rimCenterWorld);
+
+    const rx = currentPosition.x - this.rimCenterWorld.x;
+    const ry = currentPosition.y - this.rimCenterWorld.y;
+    const rz = currentPosition.z - this.rimCenterWorld.z;
+    const radial = Math.sqrt(rx * rx + rz * rz);
+    if (radial < 1e-6) return false;
+
+    const ringX = this.rimCenterWorld.x + (rx / radial) * RIM_RADIUS;
+    const ringZ = this.rimCenterWorld.z + (rz / radial) * RIM_RADIUS;
+    const tx = currentPosition.x - ringX;
+    const tz = currentPosition.z - ringZ;
+
+    const tubeDist = Math.sqrt(tx * tx + ry * ry + tz * tz);
+    const minTubeDist = RIM_TUBE_RADIUS + ballRadius;
+    if (tubeDist >= minTubeDist) return false;
+
+    const nx = tubeDist > 1e-6 ? tx / tubeDist : 1;
+    const ny = tubeDist > 1e-6 ? ry / tubeDist : 0;
+    const nz = tubeDist > 1e-6 ? tz / tubeDist : 0;
+    const push = minTubeDist - tubeDist;
+
+    currentPosition.x += nx * push;
+    currentPosition.y += ny * push;
+    currentPosition.z += nz * push;
+
+    const vn = velocity.x * nx + velocity.y * ny + velocity.z * nz;
+    if (vn < 0) {
+      velocity.x -= vn * nx * 1.7;
+      velocity.y -= vn * ny * 1.7;
+      velocity.z -= vn * nz * 1.7;
+      velocity.multiplyScalar(0.84);
+    }
+
+    return true;
   }
 
   /**

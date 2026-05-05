@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 const ARM_LENGTH = 4.5;
-const ARM_HEIGHT = 2.2;
+const ARM_HEIGHT = 1.2;
 const NUM_ARMS = 3;
 const ROTATE_SPEED = 1.5; // rad/s
 const ARM_SPHERE_RADIUS = 0.13;

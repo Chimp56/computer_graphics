@@ -172,6 +172,8 @@ export class Basketball {
       this.velocity,
       BALL_RADIUS,
     );
+    this.hoop.resolvePoleCollision(this.mesh.position, this.velocity, BALL_RADIUS);
+    this.hoop.resolveRimCollision(this.mesh.position, this.velocity, BALL_RADIUS);
 
     // Air rotation while flying
     this.mesh.rotation.x += this.velocity.length() * params.dt * 0.08;
