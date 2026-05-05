@@ -406,8 +406,8 @@ async function initGame(): Promise<void> {
     const BASE_Y = 35;
     const positions: [number, number, number][] = [
       [CX, BASE_Y + 2, 129],   
-      [CX, BASE_Y + 2, 190],   
-      [CX, BASE_Y + 12, 244],  
+      [CX, BASE_Y + 2, 178],   
+      [CX, BASE_Y + 12, 227],  
     ];
     for (const [cx, cy, cz] of positions) {
       const coin = new Coin();
