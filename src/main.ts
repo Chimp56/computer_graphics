@@ -220,8 +220,8 @@ async function initGame(): Promise<void> {
     bell = new FinishBell(bellPos);
     scene.add(bell.group);
 
-    const spawnX = 0;
-    const spawnZ = 70;
+    const spawnX = -16;
+    const spawnZ = -16;
     const spawnHeight = island.getHeightAt(spawnX, spawnZ);
     const spawnY = Number.isFinite(spawnHeight) ? spawnHeight : 5;
     const spawnPos = new THREE.Vector3(spawnX, spawnY, spawnZ);
@@ -327,30 +327,87 @@ async function initGame(): Promise<void> {
 
   if (mushroomEnemies.length === 0) {
   const enemyPlacements: [number, number][] = [
-    [10, 40],
-    [-10, 20],
-    [5, 0],
+    [12, 20],   // right mid
+    [-12, 15],  // left mid
+    [15, -5],   // right center (away from portals at Z=-20 and hoop at X:-12, Z:-14)
+    [-15, 5],   // left center
   ];
   for (const [ex, ez] of enemyPlacements) {
     const enemy = new MushroomEnemy();
     await enemy.load(scene);
     const ey = island.getHeightAt(ex, ez);
-    enemy.group.position.set(ex, Number.isFinite(ey) ? ey : 0, ez);
+    enemy.group.position.set(ex, Number.isFinite(ey) ? ey + 1 : 1, ez);
     mushroomEnemies.push(enemy);
   }
 }
 
-  if (coins.length === 0) {
-    const coinPlacements: [number, number][] = [
-      [5, 40],
-      [-5, 20],
-      [8, 0],
+  // Level 1 coins (1 coin) - on the final platform
+  if (level1) {
+    const positions: [number, number][] = [
+      [180, -16],
     ];
-    for (const [cx, cz] of coinPlacements) {
+    for (const [cx, cz] of positions) {
       const coin = new Coin();
       await coin.load(scene);
-      const cy = island.getHeightAt(cx, cz);
-      coin.group.position.set(cx, Number.isFinite(cy) ? cy + 1 : 1, cz);
+      coin.group.position.set(cx, 25 + 2, cz);
+      coins.push(coin);
+    }
+  }
+
+  // Level 2 coins (1 coin) - on the final platform
+  if (level2) {
+    const positions: [number, number][] = [
+      [-200, -30],
+    ];
+    for (const [cx, cz] of positions) {
+      const coin = new Coin();
+      await coin.load(scene);
+      coin.group.position.set(cx, 25 + 2, cz);
+      coins.push(coin);
+    }
+  }
+
+  // Level 3 coins (2 coins) - spread along the walkway
+  if (level3) {
+    const positions: [number, number][] = [
+      [-15, 200],
+      [15, 200],
+    ];
+    for (const [cx, cz] of positions) {
+      const coin = new Coin();
+      await coin.load(scene);
+      coin.group.position.set(cx, 25 + 2, cz);
+      coins.push(coin);
+    }
+  }
+
+  // Level 4 coins (2 coins) - on the slope
+  if (level4) {
+    const positions: [number, number, number][] = [
+      [level4.footCenter.x, level4.footCenter.y + 6, level4.footCenter.z - 25],
+      [level4.footCenter.x, level4.footCenter.y + 10, level4.footCenter.z - 55],
+    ];
+    for (const [cx, cy, cz] of positions) {
+      const coin = new Coin();
+      await coin.load(scene);
+      coin.group.position.set(cx, cy, cz);
+      coins.push(coin);
+    }
+  }
+
+// Level 5 coins (3 coins) - one per section
+  if (level5) {
+    const CX = -120;
+    const BASE_Y = 35;
+    const positions: [number, number, number][] = [
+      [CX, BASE_Y + 2, 129],   
+      [CX, BASE_Y + 2, 190],   
+      [CX, BASE_Y + 12, 244],  
+    ];
+    for (const [cx, cy, cz] of positions) {
+      const coin = new Coin();
+      await coin.load(scene);
+      coin.group.position.set(cx, cy, cz);
       coins.push(coin);
     }
   }
@@ -472,7 +529,7 @@ function buildLevels(): void {
   levelState.level4Spawn.set(
     level4.footCenter.x,
     level4.footCenter.y + 0.4,
-    level4.footCenter.z - 1.5,
+    level4.footCenter.z - 5,
   );
 
   l4ExitToIsland = new Portal({
