@@ -66,8 +66,8 @@ export class Sky {
 
     const daylight = THREE.MathUtils.clamp((y + 22) / 130, 0, 1);
 
-    this.sunLight.intensity = THREE.MathUtils.lerp(0.06, 0.8, daylight);
-    this.hemisphereLight.intensity = THREE.MathUtils.lerp(0.16, 0.6, daylight);
+    this.sunLight.intensity = THREE.MathUtils.lerp(0.4, 0.8, daylight);
+    this.hemisphereLight.intensity = THREE.MathUtils.lerp(0.55, 0.6, daylight);
 
     const warmth = 1 - daylight;
     this.sunLight.color.copy(this.noonColor).lerp(this.dawnColor, warmth * 0.85);
