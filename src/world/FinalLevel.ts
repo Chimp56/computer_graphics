@@ -7,8 +7,8 @@ import { Checkpoint } from "./Checkpoint";
 const CX = -120;
 const BASE_Y = 35;
 
-const SLOPE_FOOT_Z = 192;
-const SLOPE_TOP_Z = 242;
+const SLOPE_FOOT_Z = 172;
+const SLOPE_TOP_Z = 222;
 const SLOPE_LEN = SLOPE_TOP_Z - SLOPE_FOOT_Z;
 const SLOPE_RISE = 10;
 const SLOPE = SLOPE_RISE / SLOPE_LEN;
@@ -30,11 +30,11 @@ const PADS: ReadonlyArray<Pad> = [
   { x: CX, z: 105, width: 14, depth: 14 }, // mid pad with wipeout
   { x: CX, z: 120, width: 16, depth: 8 }, // pre-checkpoint A pad
   // Section 2 — Waterfall walkway
-  { x: CX, z: 158, width: 8, depth: 68 },
+  { x: CX, z: 144, width: 5, depth: 40 },
   // Section 2 → 3 transition / checkpoint B pad
-  { x: CX, z: 188, width: 14, depth: 8 },
+  { x: CX, z: 168, width: 14, depth: 8 },
   // Top platform after slope
-  { x: CX, z: 246, width: 14, depth: 10, y: TOP_Y },
+  { x: CX, z: 226, width: 14, depth: 10, y: TOP_Y },
 ];
 
 export type FinalSection = "section1" | "section2" | "section3";
@@ -48,7 +48,7 @@ export class FinalLevel {
 
   /** First checkpoint == start spawn. Always activated on level entry. */
   readonly startSpawn = new THREE.Vector3(CX, BASE_Y + 0.4, 86);
-  readonly topPortalPosition = new THREE.Vector3(CX, TOP_Y, 248.5);
+  readonly topPortalPosition = new THREE.Vector3(CX, TOP_Y, 228.5);
   readonly startPortalPosition = new THREE.Vector3(CX, BASE_Y, 81);
 
   private readonly waterfallTex: THREE.CanvasTexture;
@@ -99,10 +99,10 @@ export class FinalLevel {
       shininess: 8,
     });
     const rockWall = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 18, 68),
+      new THREE.BoxGeometry(1, 18, 40),
       rockMat,
     );
-    rockWall.position.set(CX + 4.7, BASE_Y + 8, 158);
+    rockWall.position.set(CX + 4.7, BASE_Y + 8, 144);
     rockWall.castShadow = true;
     rockWall.receiveShadow = true;
     this.group.add(rockWall);
@@ -118,13 +118,13 @@ export class FinalLevel {
       side: THREE.DoubleSide,
     });
     const waterfall = new THREE.Mesh(
-      new THREE.BoxGeometry(0.25, 24, 70),
+      new THREE.BoxGeometry(0.25, 24, 42),
       waterMat,
     );
-    waterfall.position.set(CX - 5, BASE_Y + 10, 158);
+    waterfall.position.set(CX - 5, BASE_Y + 10, 144);
     this.group.add(waterfall);
 
-    const pistonZs = [134, 144, 154, 164, 174, 184];
+    const pistonZs = [128, 138, 148, 158];
     const period = 2.8;
     for (let i = 0; i < pistonZs.length; i++) {
       const piston = new HydraulicPiston({
@@ -225,8 +225,8 @@ export class FinalLevel {
     this.group.add(cpA.group);
 
     const cpB = new Checkpoint({
-      position: new THREE.Vector3(CX, BASE_Y, 188),
-      spawnPosition: new THREE.Vector3(CX, BASE_Y + 0.4, 188),
+      position: new THREE.Vector3(CX, BASE_Y, 168),
+      spawnPosition: new THREE.Vector3(CX, BASE_Y + 0.4, 168),
     });
     this.checkpoints.push(cpB);
     this.group.add(cpB.group);
@@ -294,7 +294,7 @@ export class FinalLevel {
   update(dt: number): void {
     this.elapsed += dt;
     this.waterfallTex.offset.y = (-this.elapsed * 1.2) % 1;
-    this.slopeTex.offset.y = (this.elapsed * 0.5) % 1;
+    this.slopeTex.offset.y = (-this.elapsed * 0.5) % 1;
     for (const w of this.wipeouts) w.update(dt);
     for (const p of this.pistons) p.update(dt);
     for (const p of this.plungers) p.update(dt);

@@ -30,6 +30,7 @@ import { WaterfallLevel } from "./world/WaterfallLevel";
 import { FountainLevel } from "./world/FountainLevel";
 import { FinalLevel } from "./world/FinalLevel";
 import { Fireworks } from "./effects/Fireworks";
+import { BeachDecor } from "./world/BeachDecor";
 
 const LOOK_SENSITIVITY = 0.002;
 const MAX_PITCH = Math.PI * 0.49;
@@ -56,6 +57,7 @@ let bell: FinishBell | null = null;
 let hoop: BasketHoop | null = null;
 let basketball: Basketball | null = null;
 let interactionPromptEl: HTMLDivElement | null = null;
+let beachDecor: BeachDecor | null = null;
 
 type LevelLocation =
   | "island"
@@ -275,6 +277,9 @@ async function initGame(): Promise<void> {
     basketball.setTrajectoryPreviewEnabled(trajectoryPreviewEnabled);
     scene.add(basketball.mesh);
     scene.add(basketball.trajectoryLine);
+
+    beachDecor = new BeachDecor((x, z) => island!.getHeightAt(x, z));
+    scene.add(beachDecor.group);
   }
 
   if (!player) {
@@ -663,7 +668,7 @@ function applyLevel5Physics(section: "section1" | "section2" | "section3"): void
     player.setExternalAccel(new THREE.Vector3(0, 0, 0));
   } else {
     player.setSlipperyFactor(0.92);
-    player.setExternalAccel(new THREE.Vector3(0, 0, 8));
+    player.setExternalAccel(new THREE.Vector3(0, 0, -8));
   }
 }
 
@@ -852,6 +857,46 @@ function raf(): void {
       if (obs.checkKnockback(player.position) && respawnCooldown === 0 && water) {
         respawnInCurrentLocation();
         break;
+      }
+    }
+
+    if (levelState.current === "level5" && level5) {
+      if (level5.pollCheckpointEntries(player.position)) {
+        levelState.level5Spawn.copy(level5.getActiveSpawn());
+        if (gsm) gsm.context.checkpoint.copy(levelState.level5Spawn);
+      }
+      applyLevel5Physics(level5.getActiveSection(player.position));
+    }
+
+    pistonHitCooldown = Math.max(0, pistonHitCooldown - dt);
+    if (pistonHitCooldown === 0) {
+      let hitPiston = null;
+      if (levelState.current === "level3") {
+        hitPiston = level3?.checkPistonHit(player.position) ?? null;
+      } else if (levelState.current === "level5") {
+        hitPiston = level5?.checkPistonHit(player.position) ?? null;
+      }
+      if (hitPiston) {
+        const impulse = hitPiston.direction.clone().multiplyScalar(14);
+        impulse.y = 5;
+        player.applyKnockback(impulse);
+        pistonHitCooldown = 0.6;
+      }
+    }
+
+    plungerHitCooldown = Math.max(0, plungerHitCooldown - dt);
+    if (plungerHitCooldown === 0) {
+      let hitPlunger = null;
+      if (levelState.current === "level4") {
+        hitPlunger = level4?.checkPlungerHit(player.position) ?? null;
+      } else if (levelState.current === "level5") {
+        hitPlunger = level5?.checkPlungerHit(player.position) ?? null;
+      }
+      if (hitPlunger) {
+        const impulse = hitPlunger.direction.clone().multiplyScalar(16);
+        impulse.y = 4;
+        player.applyKnockback(impulse);
+        plungerHitCooldown = 0.6;
       }
     }
 
