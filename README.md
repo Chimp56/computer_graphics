@@ -1,23 +1,36 @@
 # Island Obstacle Speedrun
 
-A 3D browser-based obstacle-course speedrun game built with Three.js, TypeScript, and Vite. Navigate a tropical island, trigger the start zone to begin a timer, complete obstacles and interaction challenges, and ring the finish bell to stop the timer.
+A 3D browser obstacle-course speedrun built with Three.js + TypeScript + Vite.
+
+## Gameplay Flow
+
+1. Spawn on the island hub.
+2. Enter the **Level 1 portal** to start the run timer.
+3. Complete levels to unlock later portals.
+4. Enter the **Level 5 exit portal** to finish the run (win event + fireworks).
+
+## Features
+
+- 5 connected obstacle levels via portals
+- Island hub with water and respawn logic
+- Hazards: wipeouts, pistons, plungers, enemies
+- Basketball interaction challenge (pickup/throw/trajectory preview)
+- Day/night sky, animated water, lighting, shadows, HUD timer
+- Final level checkpoint-based respawn support
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) (v18 or later)
-- npm (included with Node.js)
+- [Node.js](https://nodejs.org/) (v18+)
+- npm
 
 ## Getting Started
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the development server (hot reload)
 npm run dev
 ```
 
-The dev server will open at `http://localhost:5173`.
+Open `http://localhost:5173`.
 
 ## Scripts
 
@@ -42,11 +55,19 @@ The `dist/` directory contains the static production build ready for any hosting
 
 ## Controls
 
-- **Mouse** — Look
-- **WASD** — Move
+### Core Movement
+
+- **Click canvas** — Lock pointer
+- **Mouse** — Look around
+- **W / A / S / D** — Move
 - **Space** — Jump
-- **E** — Interact
-- **V** — Toggle first-person / third-person camera
+- **E** — Interact (for example, pick up basketball)
+
+### Basketball
+
+- **Hold Left Mouse Button** — Charge throw
+- **Release Left Mouse Button** — Throw
+- **T** — Toggle trajectory preview
 
 ### Dev Controls (`npm run dev` only)
 
@@ -56,6 +77,6 @@ The `dist/` directory contains the static production build ready for any hosting
 
 ## Tech Stack
 
-- [Three.js](https://threejs.org/) — 3D rendering
-- [TypeScript](https://www.typescriptlang.org/) — Type safety
-- [Vite](https://vitejs.dev/) — Build tooling and dev server
+- [Three.js](https://threejs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vitejs.dev/)
